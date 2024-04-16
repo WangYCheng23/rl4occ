@@ -1,17 +1,19 @@
 import OCC
-from OCC.Extend.DataExchange import read_step_file
+# 导入OCC模块
+from OCC.Extend.DataExchange import read_step_file, STEPControl_Reader, STEPControl_Writer
 from OCC.Display.SimpleGui import init_display
-from OCC.Extend.DataExchange import STEPControl_Reader
-from OCC.Display.SimpleGui import init_display
-from OCC.Extend.DataExchange import STEPControl_Writer
 from OCC.Core.gp import gp_Trsf, gp_Vec
 from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCC.Extend.TopologyUtils import TopologyExplorer
-from OCC.Core.BRepBndLib import brepbndlib_Add
+from OCC.Core.BRepBndLib import brepbndlib
+from OCC.Core.BRepGProp import brepgprop
 from OCC.Core.Bnd import Bnd_Box
+from OCC.Core.BRepAlgoAPI import BRepAlgoAPI_Common
+from OCC.Core.TopoDS import TopoDS_Shape
+from OCC.Core.GProp import GProp_GProps
 import random
 import math
-import  numpy as np
+import numpy as np
 
 
 class Transform:
@@ -47,7 +49,7 @@ def direction_sign(x, y, z):
     if max_num == 3 and z > 0:
         sign = 'z'
     if max_num == 3 and z < 0:
-        sign = '-z'   #判断哪个坐标轴的绝对值最大，并确定该坐标轴的符号，从而确定了方向的符号。例如，如果x的绝对值最大且x为正数，则方向符号为'x'；如果y的绝对值最大且y为负数，则方向符号为'-y'；以此类推。
+        sign = '-z'  # 判断哪个坐标轴的绝对值最大，并确定该坐标轴的符号，从而确定了方向的符号。例如，如果x的绝对值最大且x为正数，则方向符号为'x'；如果y的绝对值最大且y为负数，则方向符号为'-y'；以此类推。
 
     return sign
 
@@ -65,10 +67,11 @@ class OCCAssembly:
         self.trans_step = 20
         self.trans_count = 2
         self.checking_num = 0
-        self.center_position = [0, 0, 0] #初始化了一个变量center_position，表示装配体的中心位置，默认为[0, 0, 0]
-        self.bboxes=[] #初始化了一个空列表bboxes，用于存储装配体的包围盒
+        # 初始化了一个变量center_position，表示装配体的中心位置，默认为[0, 0, 0]
+        self.center_position = [0, 0, 0]
+        self.bboxes = []  # 初始化了一个空列表bboxes，用于存储装配体的包围盒
 
-    def get_part_num(self): #用于获取装配体中零件的数量
+    def get_part_num(self):  # 用于获取装配体中零件的数量
         # 读取 STEP 模型文件
         filename = self.part_file
         # step_shape = read_step_file(step_filename)
@@ -78,7 +81,7 @@ class OCCAssembly:
         step_shape = reader.OneShape()
         topo = TopologyExplorer(step_shape)
         shells = list(topo.shells())
-        self.part_num=len(shells)
+        self.part_num = len(shells)
         return len(shells)
 
     #     创建爆炸图
@@ -91,10 +94,7 @@ class OCCAssembly:
         reader.ReadFile(step_filename)
         reader.TransferRoots()
         step_shape = reader.OneShape()
-        from OCC.Extend.TopologyUtils import TopologyExplorer
 
-        from OCC.Core.BRepBndLib import brepbndlib
-        from OCC.Core.Bnd import Bnd_Box
         # 求平移方向
         bbox = Bnd_Box()
         # 计算形状的包围盒
@@ -119,8 +119,7 @@ class OCCAssembly:
             centert_y = (bbox.CornerMin().Y() + bbox.CornerMax().Y()) / 2
             centert_z = (bbox.CornerMin().Z() + bbox.CornerMax().Z()) / 2
             self.bboxes.append(bbox)
-            from OCC.Core.gp import gp_Trsf, gp_Vec
-            from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
+
             trsf = gp_Trsf()
             # 使用gp_Vec定义平移向量
             # 修改爆炸距离
@@ -158,7 +157,6 @@ class OCCAssembly:
             # transform_vec.direction = (i + 1) * 10
             transform_vec.direction = [x, y, z]
             transform_vec.sign = sign
-            
 
             self.origin_shells.append(shell)
             self.boom_transform.append(transform_vec)
@@ -213,7 +211,8 @@ class OCCAssembly:
             self.result_shells.append(self.boom_shells[id])
             for i in range(self.trans_count):
                 shell = self.boom_shells[id]
-                distance = (self.trans_count - i - 1) * 1.0 / self.trans_count * self.trans_step
+                distance = (self.trans_count - i - 1) * 1.0 / \
+                    self.trans_count * self.trans_step
                 x = trans.direction[0] - distance
                 y = trans.direction[1] - distance
                 z = trans.direction[2] - distance
@@ -238,8 +237,7 @@ class OCCAssembly:
                     x = 0
                 # if i == self.trans_count - 1:
                 #     print('平移', x, y, z, id)
-                from OCC.Core.gp import gp_Trsf, gp_Vec
-                from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
+
                 trsf = gp_Trsf()
                 # 使用gp_Vec定义平移向量
                 # 修改爆炸距离
@@ -255,16 +253,14 @@ class OCCAssembly:
             transform_num += 1
         # print(count)
         return count, trans_direction
-        
+
     def compute_countij(self):
-        self.countij=np.zeros((self.part_num,self.part_num))
-        from OCC.Core.gp import gp_Trsf, gp_Vec
-        from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
-        
+        self.countij = np.zeros((self.part_num, self.part_num))
+
         for i in range(self.part_num):
             transi = self.boom_transform[i]
-            x = transi.direction[0] 
-            y = transi.direction[1] 
+            x = transi.direction[0]
+            y = transi.direction[1]
             z = transi.direction[2]
             if transi.sign == 'x' or transi.sign == '-x':
                 y = 0
@@ -285,12 +281,13 @@ class OCCAssembly:
             # 获取转换后的shape
             transformed_shapei = transformi.Shape()
             for j in range(self.part_num):
-            
-                if i!=j:
-                     transj = self.boom_transform[j]
-                     for _ in range(self.trans_count):
-                        
-                        distance = (self.trans_count - _ - 1) * 1.0 / self.trans_count * self.trans_step
+
+                if i != j:
+                    transj = self.boom_transform[j]
+                    for _ in range(self.trans_count):
+
+                        distance = (self.trans_count - _ - 1) * \
+                            1.0 / self.trans_count * self.trans_step
                         x = transj.direction[0] - distance
                         y = transj.direction[1] - distance
                         z = transj.direction[2] - distance
@@ -313,7 +310,7 @@ class OCCAssembly:
                         if transj.sign == 'z' or transj.sign == '-z':
                             y = 0
                             x = 0
-                        
+
                         trsf = gp_Trsf()
                         # 使用gp_Vec定义平移向量
                         # 修改爆炸距离
@@ -321,16 +318,14 @@ class OCCAssembly:
                         # 设置平移转换
                         trsf.SetTranslation(translation_vector)
                         # 应用转换到shape
-                        shellj=self.boom_shells[j]
+                        shellj = self.boom_shells[j]
                         transformj = BRepBuilderAPI_Transform(shellj, trsf)
                         # 获取转换后的shape
                         transformed_shapej = transformj.Shape()
-                        
-                        self.result_shells=[transformed_shapei,transformed_shapej]
-                        self.countij[j,i]=self.countij[j,i]+self.interference_checking(transformed_shapej)
 
-    
-        
+                        self.result_shells = [
+                            transformed_shapei, transformed_shapej]
+                        self.countij[j, i] += self.interference_checking(transformed_shapej)
 
     def interference_checking(self, transformed_shape):
         if self.checking_num % 100 == 0:
@@ -342,8 +337,7 @@ class OCCAssembly:
             # 获取两个形状
             shape_i = transformed_shape
             shape_j = self.result_shells[j]
-            from OCC.Core.BRepAlgoAPI import BRepAlgoAPI_Common
-            from OCC.Core.TopoDS import TopoDS_Shape
+
             # 创建一个 BRepAlgoAPI_Common 对象计算它们的布尔交
             boolean_common = BRepAlgoAPI_Common(shape_i, shape_j)
 
@@ -351,8 +345,7 @@ class OCCAssembly:
             if boolean_common.IsDone():
                 # 获取布尔交的结果
                 common_shape = boolean_common.Shape()
-                from OCC.Core.GProp import GProp_GProps
-                from OCC.Core.BRepGProp import brepgprop
+
                 # 创建一个GProp_GProps对象，用来存储体积属性
                 props = GProp_GProps()
                 # 计算体积属性
@@ -394,25 +387,22 @@ class OCCAssembly:
         # print(count)
         return count
 
-
-
-
-
     def test_checking(self):
         trans = self.transformed_ids
         count = 0
         for i in range(len(trans)):
             for j in range(i + 1, len(trans)):
                 display, start_display, add_menu, add_function_to_menu = init_display()
-                display.DisplayShape(self.result_shells[i], update=True, color="RED")
-                display.DisplayShape(self.result_shells[j], update=True, color="YELLOW")
+                display.DisplayShape(
+                    self.result_shells[i], update=True, color="RED")
+                display.DisplayShape(
+                    self.result_shells[j], update=True, color="YELLOW")
                 start_display()
 
                 # 获取两个形状
                 shape_i = self.result_shells[i]
                 shape_j = self.boom_shells[j]
-                from OCC.Core.BRepAlgoAPI import BRepAlgoAPI_Common
-                from OCC.Core.TopoDS import TopoDS_Shape
+
                 # 创建一个 BRepAlgoAPI_Common 对象计算它们的布尔交
                 boolean_common = BRepAlgoAPI_Common(shape_i, shape_j)
                 # myCut3 = BRepAlgoAPI_Common(shape_i, shape_j).Shape()
@@ -422,12 +412,11 @@ class OCCAssembly:
                 if boolean_common.IsDone():
                     # 获取布尔交的结果
                     common_shape = boolean_common.Shape()
-                    from OCC.Core.GProp import GProp_GProps
-                    from OCC.Core.BRepGProp import brepgprop_VolumeProperties
+
                     # 创建一个GProp_GProps对象，用来存储体积属性
                     props = GProp_GProps()
                     # 计算体积属性
-                    brepgprop_VolumeProperties(common_shape, props)
+                    brepgprop.VolumeProperties(common_shape, props)
                     # 获取体积
                     volume = props.Mass()
                     if volume > 1:
