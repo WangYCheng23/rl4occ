@@ -1,15 +1,10 @@
 
-
+import numpy as np
 import torch
-
 import torch.nn as nn
 
-
 from Env import Env
-
 from mytool import Replay_Buffer
-
-import numpy as np
 
 
 class QNet(nn.Module):  # 定义q值网络，定义了一个名为QNet的类，该类继承自nn.Module类，表示这个QNet类是一个PyTorch模型，用于构建神经网络模型
@@ -17,10 +12,8 @@ class QNet(nn.Module):  # 定义q值网络，定义了一个名为QNet的类，�
     # 定义了QNet类的初始化方法，该方法接收三个参数：inputdim表示输入的特征维度，hiddendim表示隐藏层的神经元数量，outputdim表示输出的维度（通常对应着动作的数量）
     def __init__(self, inputdim, hiddendim, outputdim):
         super(QNet, self).__init__()  # 调用了父类nn.Module的初始化方法，确保正确地初始化神经网络模型
-
         # 定义了一个全连接层linear1，将输入特征的维度映射到隐藏层的维度。这里使用了nn.Linear类，表示线性变换
         self.linear1 = nn.Linear(inputdim, hiddendim)
-
         # 定义了另一个全连接层linear2，将隐藏层的维度映射到输出的维度。同样使用了nn.Linear类，表示线性变换。
         self.linear2 = nn.Linear(hiddendim, outputdim)
 
@@ -28,61 +21,43 @@ class QNet(nn.Module):  # 定义q值网络，定义了一个名为QNet的类，�
 
         # 对输入x先经过第一个全连接层linear1进行线性变换，然后通过torch.nn.Tanh()函数进行激活，将激活后的结果作为下一层的输入
         x = torch.nn.Tanh()(self.linear1(x))
-
         x = self.linear2(x)  # 将经过Tanh激活后的结果再经过第二个全连接层linear2进行线性变换，得到最终的输出
 
         return x  # 返回经过两层全连接层处理后的最终输出结果
 
 
-class DQN:
+class DQNAgent:
 
     def __init__(self, env, size):  # 定义环境对象和经验回放缓冲区的大小
 
         self.env = env  # 定义环境对象
-
         self.n_actions = self.env.n_actions  # 定义动作数量
-
         self.n_state = self.env.n_state  # 定义状态数量
-
         self.q_net = QNet(self.n_state, 20, self.n_actions)  # 定义q值的估计网络
-
         self.target_q_net = QNet(self.n_state, 20, self.n_actions)  # 定义q值的目标网络
-
         # 目标网络和估值网络权重一开始相同，为了在深度 Q 学习算法中稳定训练和提高效率
         self.target_q_net.load_state_dict(self.q_net.state_dict())
-
         # 创建一个大小为size的经验回放缓冲区，用于存储智能体与环境交互的经验数据
         self.replay_buffer = Replay_Buffer(size, self.n_state)
-
         self.n_steps = 10  # 定义每次训练时使用的步数
-
         self.batch_size = 80  # 定义每次训练时的批量大小
-
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
         self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr=2e-4)
-
         self.replace_steps_cycle = 60  # 定义替换目标网络参数的周期步数
-
         self.episilon = 0.76  # 定义ε贪婪策略中的ε值
-
         self.gamma = 0.998  # 定义强化学习中的折扣因子，用于调节当前奖励和未来奖励的重要性
-
         self.save_cycyle = 10  # 定义保存模型的周期步数
 
     def set_episilon(self):
-
         self.episilon = 0.76  # 用于ε贪婪策略，用于在探索和利用之间进行权衡
 
     def save_model(self):  # 保存q估值网络
-
         torch.save(self.q_net, 'q_net.pth')
 
     def load_model(self):  # 加载深度Q学习算法中的Q值估计网络（q_net）便于继续训练和预测
-
         self.q_net = torch.load('q_net.pth')
 
     def learn(self, episode_nums):
-
         accrewards = []  # 创建一个空列表 accrewards，用于存储每轮训练的累积奖励
 
         step_ = 0  # 初始化步数计数器 step_ 为0
@@ -221,7 +196,7 @@ if __name__ == '__main__':
     env = Env(step_filename)  # 初始化环境对象
 
     size = 3000  # 定义了经验回放缓冲区的大小
-    dqn = DQN(env, size)
+    dqn = DQNAgent(env, size)
 
     episode_nums = 2000  # 定义了训练的总回合数
 
