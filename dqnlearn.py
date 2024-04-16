@@ -1,35 +1,56 @@
 
+import os
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from Env import Env
 from mytool import Replay_Buffer
 
 
-class QNet(nn.Module):  # 定义q值网络，定义了一个名为QNet的类，该类继承自nn.Module类，表示这个QNet类是一个PyTorch模型，用于构建神经网络模型
 
-    # 定义了QNet类的初始化方法，该方法接收三个参数：inputdim表示输入的特征维度，hiddendim表示隐藏层的神经元数量，outputdim表示输出的维度（通常对应着动作的数量）
-    def __init__(self, inputdim, hiddendim, outputdim):
-        super(QNet, self).__init__()  # 调用了父类nn.Module的初始化方法，确保正确地初始化神经网络模型
-        # 定义了一个全连接层linear1，将输入特征的维度映射到隐藏层的维度。这里使用了nn.Linear类，表示线性变换
-        self.linear1 = nn.Linear(inputdim, hiddendim)
-        # 定义了另一个全连接层linear2，将隐藏层的维度映射到输出的维度。同样使用了nn.Linear类，表示线性变换。
-        self.linear2 = nn.Linear(hiddendim, outputdim)
+class QNet(nn.Module):
+    def __init__(self, inputdim, hiddendim, outputdim, num_heads):
+        super(QNet, self).__init__()
+        self.hiddendim = hiddendim
+        self.num_heads = num_heads
+        self.head_dim = hiddendim // num_heads  # 每个头的维度
 
-    def forward(self, x):  # 定义了QNet类的前向传播方法forward，该方法接收输入x并返回输出。在PyTorch中，所有的模型都必须实现这个方法，用于定义模型的计算流程
+        # 定义一个线性层来映射输入特征到hiddendim维度
+        self.input_linear = nn.Linear(inputdim, hiddendim)
 
-        # 对输入x先经过第一个全连接层linear1进行线性变换，然后通过torch.nn.Tanh()函数进行激活，将激活后的结果作为下一层的输入
-        x = torch.nn.Tanh()(self.linear1(x))
-        x = self.linear2(x)  # 将经过Tanh激活后的结果再经过第二个全连接层linear2进行线性变换，得到最终的输出
+        # 定义多头注意力层
+        self.multihead_att = nn.MultiheadAttention(embed_dim=hiddendim, num_heads=num_heads)
 
-        return x  # 返回经过两层全连接层处理后的最终输出结果
+        # 定义一个线性层，将注意力层的输出映射到输出动作的数量
+        self.Linear = nn.Linear(hiddendim, outputdim)
 
+    def forward(self, x):
+        # 假设输入x的形状是 (n, 1)，我们需要将其调整为 (1, n, hiddendim)
+        # 首先，通过线性层映射输入特征到hiddendim维度
+        x = self.input_linear(x)  # x的形状现在是 (n, hiddendim)
+
+        # 然后，我们需要调整x的形状以匹配多头注意力层的期望输入形状
+        # 我们通过增加一个批次维度和一个序列维度来实现这一点
+        x = x.unsqueeze(0)  # 在第一个维度增加一个批次维度，形状变为 (1, n, hiddendim)
+
+        # 通过多头注意力层
+        attn_output, attn_weights = self.multihead_att(x, x, x, attn_mask=None)
+
+        # 注意力层的输出形状是 (1, n, hiddendim)
+        # 我们可以通过全局池化（比如平均池化）来聚合序列信息
+        attn_output = torch.mean(attn_output, dim=1)  # 形状变为 (1, hiddendim)
+
+        # 将注意力层的输出通过一个线性层，以产生最终的动作
+        action_probs = F.softmax(self.Linear(attn_output.squeeze(0)), dim=-1)  # 形状变为 (hiddendim, action_dim)
+
+        return action_probs
 
 class DQNAgent:
 
     def __init__(self, env, size):  # 定义环境对象和经验回放缓冲区的大小
-
+        print("---初始化dqn agent---")
         self.env = env  # 定义环境对象
         self.n_actions = self.env.n_actions  # 定义动作数量
         self.n_state = self.env.n_state  # 定义状态数量
@@ -56,6 +77,34 @@ class DQNAgent:
 
     def load_model(self):  # 加载深度Q学习算法中的Q值估计网络（q_net）便于继续训练和预测
         self.q_net = torch.load('q_net.pth')
+
+    def choose_action(self, state, episilon):  # 在给定状态下选择动作的过程
+
+        # 定义了一个方法，接受当前状态和ε-greedy策略中的ε作为输入
+        state = torch.tensor(state[None, :]).float()
+        self.q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
+        o = self.q_net(state)  # 使用Q网络预测当前状态下各个动作的Q值
+
+        o = o.detach().cpu().numpy()[0, :]  # 将Q值张量转换为NumPy数组，以便后续处理
+
+        # 根据ε-greedy策略来选择动作，当随机数小于ε时，以一定概率选择随机动作
+        if np.random.uniform(0, 1) < episilon:
+
+            maxactionid = len(self.env.stepedparts)  # 获取已经执行的动作数量，用于限制后续动作的选择
+            p = np.ones([self.n_actions])  # 初始化动作概率数组，所有动作的概率都设为1
+            if maxactionid+1 < self.n_actions:  # 如果已执行的动作数量加1小于总动作数量，说明还有未执行的动作
+                p[maxactionid+1:] = 1 / \
+                    (self.n_actions-maxactionid-1)  # 将未执行的动作的概率设为均匀分布
+
+            p = p/np.sum(p)  # 将概率归一化，确保概率之和为1
+
+            action = int(np.random.choice(
+                self.n_actions, 1, p=p)[0])  # 根据概率分布选择动作
+
+        else:  # 如果随机数大于ε，则以1-ε的概率选择最优动作
+            action = np.argmax(o)  # 选择具有最大Q值的动作作为最优动作
+
+        return action  # 返回选择的动作
 
     def learn(self, episode_nums):
         accrewards = []  # 创建一个空列表 accrewards，用于存储每轮训练的累积奖励
@@ -160,40 +209,11 @@ class DQNAgent:
         # 将最终的零件组装顺序保存到文件中，文件名以原始文件名加上 '_dqnvalue.npy' 结尾，以区分其他文件
         np.save(self.env.step_filename+'_dqnvalue.npy', res)
 
-    def choose_action(self, state, episilon):  # 在给定状态下选择动作的过程
-
-        # 定义了一个方法，接受当前状态和ε-greedy策略中的ε作为输入
-        state = torch.tensor(state[None, :]).float()
-        self.q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
-        o = self.q_net(state)  # 使用Q网络预测当前状态下各个动作的Q值
-
-        o = o.detach().cpu().numpy()[0, :]  # 将Q值张量转换为NumPy数组，以便后续处理
-
-        # 根据ε-greedy策略来选择动作，当随机数小于ε时，以一定概率选择随机动作
-        if np.random.uniform(0, 1) < episilon:
-
-            maxactionid = len(self.env.stepedparts)  # 获取已经执行的动作数量，用于限制后续动作的选择
-            p = np.ones([self.n_actions])  # 初始化动作概率数组，所有动作的概率都设为1
-            if maxactionid+1 < self.n_actions:  # 如果已执行的动作数量加1小于总动作数量，说明还有未执行的动作
-                p[maxactionid+1:] = 1 / \
-                    (self.n_actions-maxactionid-1)  # 将未执行的动作的概率设为均匀分布
-
-            p = p/np.sum(p)  # 将概率归一化，确保概率之和为1
-
-            action = int(np.random.choice(
-                self.n_actions, 1, p=p)[0])  # 根据概率分布选择动作
-
-        else:  # 如果随机数大于ε，则以1-ε的概率选择最优动作
-            action = np.argmax(o)  # 选择具有最大Q值的动作作为最优动作
-
-        return action  # 返回选择的动作
-
 
 if __name__ == '__main__':
-
-    step_filename = 'assembly.step'  # 模型文件名字
-
-    env = Env(step_filename)  # 初始化环境对象
+    train_dir = '/home/wangc/Documents/rl4occ/data/train'
+    step_filenames = [os.path.join(train_dir, path) for path in os.listdir(train_dir)]
+    env = Env(step_filenames)
 
     size = 3000  # 定义了经验回放缓冲区的大小
     dqn = DQNAgent(env, size)

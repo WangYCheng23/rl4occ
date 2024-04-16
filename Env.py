@@ -1,14 +1,16 @@
 import os
 import random
-from assembly import OCCAssembly
+from typing import List, Dict
 import gym
 import numpy as np
+from assembly import OCCAssembly
 
 
 class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
 
     def __init__(self, step_files):  # 定义环境
         self.step_filenames = step_files
+        self.action_space = gym.spaces.Space(shape=(1,2), dtype=float)  # mu and sigma
 
     def get_state(self):  # 将装配体的状态转换成一个适合神经网络处理的向量形式
         """状态空间"""
@@ -78,7 +80,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         self.part_num = self.assembly.get_part_num()  # 获取装配模型中的零件数量
         self.assembly.compute_countij()  # 提前计算每个零件排在在某个其他零件后发生碰撞次数，为了加速
         self.n_state = self.part_num*2*9
-        self.n_actions = self.part_num  # 将动作空间的大小设置为零件的数量，表示每个动作是选择一个零件进行装配
+        # self.n_actions = self.part_num  # 将动作空间的大小设置为零件的数量，表示每个动作是选择一个零件进行装配
         self.stepedparts = []  # 已装配的
         self.unstepparts = list(range(self.part_num))   # 未装配的
         self.maxabsx = max([abs(self.assembly.boom_transform[i].direction[0])
@@ -102,18 +104,20 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         return self.get_state()
         
 
-    def step(self, action):
-
+    def step(self, action: List[float]):
+        assert len(action) == 2, "action must be a list of length 2"
+        
         f1 = self.comp_fit(self.stepedparts)
         id = self.unstepparts.pop(0)
 
-        if action < len(self.stepedparts):
+        # if action < len(self.stepedparts):
+        mu, sigma = action
+        sampled_value = np.random.normal(mu, sigma)
+        id = int(np.round(sampled_value) % len(self.stepedparts))
+        self.stepedparts = self.stepedparts[:action]+[id]+self.stepedparts[action:]
 
-            self.stepedparts = self.stepedparts[:action] + \
-                [id]+self.stepedparts[action:]
-
-        else:
-            self.stepedparts.append(id)
+        # else:
+        #     self.stepedparts.append(id)
 
         f2 = self.comp_fit(self.stepedparts)
 
@@ -122,7 +126,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         if self.unstepparts == []:
             isterminated = True
 
-        return reward, isterminated
+        return self.get_state(), reward, isterminated
     
 
 if __name__ == '__main__':
