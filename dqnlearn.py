@@ -9,10 +9,22 @@ from Env import Env
 from mytool import Replay_Buffer
 
 
-
 class QNet(nn.Module):
-    def __init__(self, inputdim, hiddendim, outputdim, num_heads):
+    def __init__(self, inputdim, hiddendim, outputdim):
         super(QNet, self).__init__()
+        self.fc1 = nn.Linear(inputdim, hiddendim)
+        self.fc2 = nn.Linear(hiddendim, hiddendim)
+        self.fc3 = nn.Linear(hiddendim, outputdim)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+class Attention_QNet(nn.Module):
+    def __init__(self, inputdim, hiddendim, outputdim, num_heads):
+        super(Attention_QNet, self).__init__()
         self.hiddendim = hiddendim
         self.num_heads = num_heads
         self.head_dim = hiddendim // num_heads  # 每个头的维度

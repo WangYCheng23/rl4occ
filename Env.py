@@ -10,6 +10,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
 
     def __init__(self, step_files):  # 定义环境
         self.step_filenames = step_files
+        self.state_space = gym.spaces.Box(low=-1, high=1, shape=(850*2*9,), dtype=float)  # 状态空间
         self.action_space = gym.spaces.Space(shape=(1,2), dtype=float)  # mu and sigma
 
     def get_state(self):  # 将装配体的状态转换成一个适合神经网络处理的向量形式
@@ -43,7 +44,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         # 对状态向量进行归一化处理，将各个特征的值归一化到 [-1, 1] 的范围内，以便神经网络更好地处理。
         state[:, 7:9] = state[:, 7:9]/self.maxabscornnerz
         state = np.reshape(state, (-1))  # 将状态向量展开成一维数组，并返回该数组作为当前环境的状态
-
+        state = np.pad(state, (0, self.state_space.shape-len(state)), 'constant', constant_values=(0, 0))
         return state
 
     def comp_fit(self, one_path):
