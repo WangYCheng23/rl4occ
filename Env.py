@@ -9,9 +9,9 @@ from assembly import OCCAssembly
 class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
 
     def __init__(self, step_files):  # 定义环境
+        print("---初始化环境---")
         self.step_filenames = step_files
-        self.state_space = gym.spaces.Box(low=-1, high=1, shape=(850*2*9,), dtype=float)  # 状态空间
-        self.action_space = gym.spaces.Space(shape=(1,2), dtype=float)  # mu and sigma
+
 
     def get_state(self):  # 将装配体的状态转换成一个适合神经网络处理的向量形式
         """状态空间"""
@@ -105,17 +105,21 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         return self.get_state()
         
 
-    def step(self, action: List[float]):
-        assert len(action) == 2, "action must be a list of length 2"
-        
+    def step(self, action: int):
+        """_summary_
+
+        Args:
+            action (int): pick one element from unstepparts
+
+        Returns:
+            _type_: int
+        """
+        print(f"---执行动作, 选取零件{action}---")
         f1 = self.comp_fit(self.stepedparts)
-        id = self.unstepparts.pop(0)
 
         # if action < len(self.stepedparts):
-        mu, sigma = action
-        sampled_value = np.random.normal(mu, sigma)
-        id = int(np.round(sampled_value) % len(self.stepedparts))
-        self.stepedparts = self.stepedparts[:action]+[id]+self.stepedparts[action:]
+        self.unstepparts.remove(action)
+        self.stepedparts.append(action)
 
         # else:
         #     self.stepedparts.append(id)
@@ -135,4 +139,7 @@ if __name__ == '__main__':
     step_filenames = [os.path.join(train_dir, path) for path in os.listdir(train_dir)]
     env = Env(step_filenames)
     next_states = env.reset()
+    env.step(1)
+    env.step(3)
+    env.step(5)
     print('debug!')

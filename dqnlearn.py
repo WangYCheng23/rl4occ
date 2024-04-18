@@ -1,4 +1,5 @@
 
+import copy
 import os
 import numpy as np
 import torch
@@ -6,74 +7,34 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from Env import Env
-from mytool import Replay_Buffer
-
-
-class QNet(nn.Module):
-    def __init__(self, inputdim, hiddendim, outputdim):
-        super(QNet, self).__init__()
-        self.fc1 = nn.Linear(inputdim, hiddendim)
-        self.fc2 = nn.Linear(hiddendim, hiddendim)
-        self.fc3 = nn.Linear(hiddendim, outputdim)
-
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
-
-class Attention_QNet(nn.Module):
-    def __init__(self, inputdim, hiddendim, outputdim, num_heads):
-        super(Attention_QNet, self).__init__()
-        self.hiddendim = hiddendim
-        self.num_heads = num_heads
-        self.head_dim = hiddendim // num_heads  # 每个头的维度
-
-        # 定义一个线性层来映射输入特征到hiddendim维度
-        self.input_linear = nn.Linear(inputdim, hiddendim)
-
-        # 定义多头注意力层
-        self.multihead_att = nn.MultiheadAttention(embed_dim=hiddendim, num_heads=num_heads)
-
-        # 定义一个线性层，将注意力层的输出映射到输出动作的数量
-        self.Linear = nn.Linear(hiddendim, outputdim)
-
-    def forward(self, x):
-        # 假设输入x的形状是 (n, 1)，我们需要将其调整为 (1, n, hiddendim)
-        # 首先，通过线性层映射输入特征到hiddendim维度
-        x = self.input_linear(x)  # x的形状现在是 (n, hiddendim)
-
-        # 然后，我们需要调整x的形状以匹配多头注意力层的期望输入形状
-        # 我们通过增加一个批次维度和一个序列维度来实现这一点
-        x = x.unsqueeze(0)  # 在第一个维度增加一个批次维度，形状变为 (1, n, hiddendim)
-
-        # 通过多头注意力层
-        attn_output, attn_weights = self.multihead_att(x, x, x, attn_mask=None)
-
-        # 注意力层的输出形状是 (1, n, hiddendim)
-        # 我们可以通过全局池化（比如平均池化）来聚合序列信息
-        attn_output = torch.mean(attn_output, dim=1)  # 形状变为 (1, hiddendim)
-
-        # 将注意力层的输出通过一个线性层，以产生最终的动作
-        action_probs = F.softmax(self.Linear(attn_output.squeeze(0)), dim=-1)  # 形状变为 (hiddendim, action_dim)
-
-        return action_probs
+from replay_buffer import ReplayBuffer
+from attention_q_net import MultiHeadAttention, AttentionQNet
 
 class DQNAgent:
 
-    def __init__(self, env, size):  # 定义环境对象和经验回放缓冲区的大小
+    def __init__(self, env, buffer_size):  # 定义环境对象和经验回放缓冲区的大小
         print("---初始化dqn agent---")
         self.env = env  # 定义环境对象
-        self.n_actions = self.env.n_actions  # 定义动作数量
-        self.n_state = self.env.n_state  # 定义状态数量
-        self.q_net = QNet(self.n_state, 20, self.n_actions)  # 定义q值的估计网络
-        self.target_q_net = QNet(self.n_state, 20, self.n_actions)  # 定义q值的目标网络
+        self.n_actions = self.env.part_num  # 定义动作数量
+        self.n_state = self.env.part_num  # 定义状态数量
+        
+        # Q-net 超参数
+        self.output_dim = 1, 
+        self.hidden_dim = 64, 
+        self.embed_dim = 16, 
+        self.num_heads = 4
+        
+        self.eval_q_net = AttentionQNet(output_dim, hidden_dim, embed_dim, num_heads)  # 定义q值的估计网络
+        self.target_q_net = AttentionQNet(output_dim, hidden_dim, embed_dim, num_heads)  # 定义q值的目标网络
         # 目标网络和估值网络权重一开始相同，为了在深度 Q 学习算法中稳定训练和提高效率
-        self.target_q_net.load_state_dict(self.q_net.state_dict())
-        # 创建一个大小为size的经验回放缓冲区，用于存储智能体与环境交互的经验数据
-        self.replay_buffer = Replay_Buffer(size, self.n_state)
+        self.target_q_net.load_state_dict(self.eval_q_net.state_dict())
+        
+        # 创建一个大小为buffer_size的经验回放缓冲区，用于存储智能体与环境交互的经验数据
+        self.replay_buffer = ReplayBuffer(buffer_size)
+        
+        # 训练超参数
         self.n_steps = 10  # 定义每次训练时使用的步数
-        self.batch_size = 80  # 定义每次训练时的批量大小
+        self.batch_size = 64  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
         self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr=2e-4)
         self.replace_steps_cycle = 60  # 定义替换目标网络参数的周期步数
@@ -85,17 +46,17 @@ class DQNAgent:
         self.episilon = 0.76  # 用于ε贪婪策略，用于在探索和利用之间进行权衡
 
     def save_model(self):  # 保存q估值网络
-        torch.save(self.q_net, 'q_net.pth')
+        torch.save(self.eval_q_net, 'eval_q_net.pth')
 
     def load_model(self):  # 加载深度Q学习算法中的Q值估计网络（q_net）便于继续训练和预测
-        self.q_net = torch.load('q_net.pth')
+        self.eval_q_net = torch.load('eval_q_net.pth')
 
     def choose_action(self, state, episilon):  # 在给定状态下选择动作的过程
 
         # 定义了一个方法，接受当前状态和ε-greedy策略中的ε作为输入
-        state = torch.tensor(state[None, :]).float()
-        self.q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
-        o = self.q_net(state)  # 使用Q网络预测当前状态下各个动作的Q值
+        state = torch.FloatTensor(state[None, :])
+        self.eval_q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
+        o = self.eval_q_net(state)  # 使用Q网络预测当前状态下各个动作的Q值
 
         o = o.detach().cpu().numpy()[0, :]  # 将Q值张量转换为NumPy数组，以便后续处理
 
@@ -159,7 +120,7 @@ class DQNAgent:
             self.replay_buffer.store_records(records)
             # episilon每一轮都要减少一个小数值，在每一轮训练中逐渐减小 ε（epsilon）值，即探索率。ε是在DQN中用于控制探索和利用之间的平衡的重要参数。通过逐渐减小 ε，模型在训练的早期会更多地进行探索，随着训练的进行，模型会更多地利用已经学到的知识。
             self.episilon = max(self.episilon-0.004, 0.0003)
-            self.q_net.train()  # 将Q网络设置为训练模式（反向传播时会计算梯度），以便在下一轮训练中更新其参数
+            self.eval_q_net.train()  # 将Q网络设置为训练模式（反向传播时会计算梯度），以便在下一轮训练中更新其参数
             self.target_q_net.eval()  # 将目标 Q 网络设置为评估模式，以确保在训练过程中不会更新其参数，保持其稳定性。
             for step in range(self.n_steps):  # 用于每轮训练的核心部分
 
@@ -195,7 +156,7 @@ class DQNAgent:
                 if step_ % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
 
                     self.target_q_net.load_state_dict(
-                        self.q_net.state_dict())  # 更新目标Q网络的参数
+                        self.eval_q_net.state_dict())  # 更新目标Q网络的参数
 
             self.save_model()  # 保存模型的参数
 
@@ -228,10 +189,17 @@ if __name__ == '__main__':
     env = Env(step_filenames)
     states = env.reset()
     
-    policy = Attention_QNet()
+    embed_dim = 16
+    hidden_dim = 64
+    num_heads = 4
+    output_dim = 1  # 输出维度
+    seq_length = len(states)  # 序列长度
+    
+    policy = AttentionQNet(output_dim, hidden_dim, embed_dim, num_heads)
+    policy(torch.FloatTensor(states).reshape(1,-1,1))
 
-    size = 3000  # 定义了经验回放缓冲区的大小
-    dqn = DQNAgent(env, size)
+    buffer_size = 3000  # 定义了经验回放缓冲区的大小
+    dqn = DQNAgent(env, buffer_size)
 
     episode_nums = 2000  # 定义了训练的总回合数
 
