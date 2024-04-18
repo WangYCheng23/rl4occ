@@ -226,6 +226,9 @@ if __name__ == '__main__':
     train_dir = '/home/wangc/Documents/rl4occ/data/train'
     step_filenames = [os.path.join(train_dir, path) for path in os.listdir(train_dir)]
     env = Env(step_filenames)
+    states = env.reset()
+    
+    policy = Attention_QNet()
 
     size = 3000  # 定义了经验回放缓冲区的大小
     dqn = DQNAgent(env, size)
