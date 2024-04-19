@@ -1,3 +1,8 @@
+'''
+Author: WANG CHENG
+Date: 2024-04-19 00:44:42
+LastEditTime: 2024-04-20 00:11:49
+'''
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -55,13 +60,14 @@ class MultiHeadAttention(nn.Module):
         return output
 
 class AttentionQNet(nn.Module):
-    def __init__(self, output_dim, hidden_dim, embed_dim, num_heads):
+    def __init__(self, input_dim, output_dim, hidden_dim, embed_dim, num_heads):
         super(AttentionQNet, self).__init__()
+        self.input_dim = input_dim
         self.output_dim = output_dim
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         
-        self.embedding = nn.Linear(1, embed_dim)  # Embedding layer for input
+        self.embedding = nn.Linear(input_dim, embed_dim)  # Embedding layer for input
         self.attention = MultiHeadAttention(embed_dim, num_heads)
         self.fc1 = nn.Linear(embed_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, output_dim)
@@ -74,12 +80,20 @@ class AttentionQNet(nn.Module):
         return x
 
 if __name__ == "__main__":
-    seq_len = 10
-    output_dim = 5
-    embed_dim = 32
+    input_dim = 9
+    embed_dim = 64
+    hidden_dim = 64
     num_heads = 4
+    output_dim = 1  # 输出维度
+    seq_length = 10  # 序列长度
 
-    policy_net = AttentionQNet(output_dim, embed_dim, num_heads)
-    input_tensor = torch.randn(1, seq_len, 1)  # Example input tensor with shape (batch_size, seq_len, input_dim)
+    policy_net = AttentionQNet(input_dim, output_dim, hidden_dim, embed_dim, num_heads)
+    input_tensor = torch.randn(1, seq_length, input_dim)  # Example input tensor with shape (batch_size, seq_len, input_dim)
+    masked_positions = [4,7]
     output_tensor = policy_net(input_tensor)
+    # 创建掩码张量
+    mask = torch.ones_like(output_tensor)  # 先创建一个全 1 的张量
+    # 将需要掩盖的位置置零
+    mask[:,masked_positions,:] = 0
+    output_tensor.masked_fill_(mask==0, -float('inf'))
     print(output_tensor)
