@@ -1,3 +1,8 @@
+<!--
+ * @Author: WANG CHENG
+ * @Date: 2024-04-20 02:20:51
+ * @LastEditTime: 2024-04-20 02:22:27
+-->
 # RL4OCC Project
 
 RL4OCC is a project that utilizes Deep Reinforcement Learning (DQN) to solve assembly sequence problems. The project employs both Genetic Algorithm (GA) and DQN to optimize the assembly sequence, reduce the number of collisions during assembly, and improve assembly efficiency.
@@ -7,15 +12,20 @@ RL4OCC is a project that utilizes Deep Reinforcement Learning (DQN) to solve ass
 Below is an overview of the project's directory structure and important files:
 ```
 rl4occ/
-│
 ├── assembly.py
 ├── attention_q_net.py
+├── data
 ├── data_process.py
 ├── dqnlearn.py
 ├── Env.py
+├── LICENSE
 ├── main.py
+├── misc
 ├── misc.py
+├── model
 ├── optimise.py
+├── README.md
+├── reference
 └── replay_buffer.py
 ```
 
