@@ -1,7 +1,7 @@
 <!--
  * @Author: WANG CHENG
  * @Date: 2024-04-20 02:20:51
- * @LastEditTime: 2024-04-20 02:22:27
+ * @LastEditTime: 2024-04-20 21:35:34
 -->
 # RL4OCC Project
 
@@ -17,7 +17,7 @@ rl4occ/
 ├── data
 ├── data_process.py
 ├── dqnlearn.py
-├── Env.py
+├── env.py
 ├── LICENSE
 ├── main.py
 ├── misc
@@ -26,7 +26,8 @@ rl4occ/
 ├── optimise.py
 ├── README.md
 ├── reference
-└── replay_buffer.py
+├── replay_buffer.py
+└── utils.py
 ```
 
 ## Dependencies Installation
