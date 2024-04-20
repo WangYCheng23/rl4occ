@@ -58,8 +58,8 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         for i in range(len(one_path)):
             for j in range(i+1, len(one_path)):  # 利用提前计算好的邻居两量碰撞次数来统计出总的碰撞次数
 
-                interference_count = interference_count + \
-                    self.assembly.countij[one_path[j], one_path[i]]
+                # interference_count = interference_count + self.assembly.countij[one_path[j], one_path[i]]
+                interference_count = interference_count + self.assembly.get_ijcount(i,j)
 
         # 统计装配方向改变次数
         pre_direction = self.assembly.boom_transform[one_path[0]].sign
@@ -81,7 +81,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         self.step_filename = step_filename
         self.assembly.create_boom()  # 创建装配模型的爆炸视图，用于显示零件的装配顺序。
         self.part_num = self.assembly.get_part_num()  # 获取装配模型中的零件数量
-        self.assembly.compute_countij()  # 提前计算每个零件排在在某个其他零件后发生碰撞次数，为了加速
+        # self.assembly.compute_countij()  # 提前计算每个零件排在在某个其他零件后发生碰撞次数，为了加速
         self.n_state = self.part_num*2*9
         # self.n_actions = self.part_num  # 将动作空间的大小设置为零件的数量，表示每个动作是选择一个零件进行装配
         self.stepedparts = []  # 已装配的

@@ -14,6 +14,7 @@ from OCC.Core.GProp import GProp_GProps
 import random
 import math
 import numpy as np
+from tqdm import tqdm
 
 
 class Transform:
@@ -56,6 +57,7 @@ def direction_sign(x, y, z):
 
 class OCCAssembly:
     def __init__(self, part_file):
+        print(f'选择装配体:{part_file}')
         self.part_file = part_file  # 装配体路径
         self.part_list = []  # 零件集合
         self.result_shells = []  # 平移后的零件集合
@@ -216,15 +218,6 @@ class OCCAssembly:
                 x = trans.direction[0] - distance
                 y = trans.direction[1] - distance
                 z = trans.direction[2] - distance
-                # if trans.sign == 'x' or trans.sign == '-x':
-                #     y = self.center_position[1]
-                #     z = self.center_position[2]
-                # if trans.sign == 'y' or trans.sign == '-y':
-                #     x = self.center_position[1]
-                #     z = self.center_position[2]
-                # if trans.sign == 'z' or trans.sign == '-z':
-                #     y = self.center_position[1]
-                #     x = self.center_position[0]
 
                 if trans.sign == 'x' or trans.sign == '-x':
                     y = 0
@@ -254,84 +247,139 @@ class OCCAssembly:
         # print(count)
         return count, trans_direction
 
+    def get_ijcount(self, i, j):
+        ij = 0
+        transi = self.boom_transform[i]
+        x = transi.direction[0]
+        y = transi.direction[1]
+        z = transi.direction[2]
+        if transi.sign == 'x' or transi.sign == '-x':
+            y = 0
+            z = 0
+        if transi.sign == 'y' or transi.sign == '-y':
+            x = 0
+            z = 0
+        if transi.sign == 'z' or transi.sign == '-z':
+            y = 0
+            x = 0
+        trsf = gp_Trsf()
+        translation_vector = gp_Vec(-x, -y, -z)
+        # 设置平移转换
+        trsf.SetTranslation(translation_vector)
+        # 应用转换到shape
+        shelli = self.boom_shells[i]
+        transformi = BRepBuilderAPI_Transform(shelli, trsf)
+        # 获取转换后的shape
+        transformed_shapei = transformi.Shape()
+        if i != j:
+            transj = self.boom_transform[j]
+            for _ in range(self.trans_count):
+
+                distance = (self.trans_count - _ - 1) * \
+                    1.0 / self.trans_count * self.trans_step
+                x = transj.direction[0] - distance
+                y = transj.direction[1] - distance
+                z = transj.direction[2] - distance
+
+                if transj.sign == 'x' or transj.sign == '-x':
+                    y = 0
+                    z = 0
+                if transj.sign == 'y' or transj.sign == '-y':
+                    x = 0
+                    z = 0
+                if transj.sign == 'z' or transj.sign == '-z':
+                    y = 0
+                    x = 0
+
+                trsf = gp_Trsf()
+                # 使用gp_Vec定义平移向量
+                # 修改爆炸距离
+                translation_vector = gp_Vec(-x, -y, -z)
+                # 设置平移转换
+                trsf.SetTranslation(translation_vector)
+                # 应用转换到shape
+                shellj = self.boom_shells[j]
+                transformj = BRepBuilderAPI_Transform(shellj, trsf)
+                # 获取转换后的shape
+                transformed_shapej = transformj.Shape()
+
+                self.result_shells = [
+                    transformed_shapei, transformed_shapej]
+                ij += self.interference_checking(transformed_shapej)
+        return ij
+        
     def compute_countij(self):
         self.countij = np.zeros((self.part_num, self.part_num))
+        count = 0
+        with tqdm(total=self.part_num * (self.part_num - 1) * self.trans_count) as pbar:
+            pbar.set_description(f'累计碰撞检测次数:')
+            for i in range(self.part_num):
+                transi = self.boom_transform[i]
+                x = transi.direction[0]
+                y = transi.direction[1]
+                z = transi.direction[2]
+                if transi.sign == 'x' or transi.sign == '-x':
+                    y = 0
+                    z = 0
+                if transi.sign == 'y' or transi.sign == '-y':
+                    x = 0
+                    z = 0
+                if transi.sign == 'z' or transi.sign == '-z':
+                    y = 0
+                    x = 0
+                trsf = gp_Trsf()
+                translation_vector = gp_Vec(-x, -y, -z)
+                # 设置平移转换
+                trsf.SetTranslation(translation_vector)
+                # 应用转换到shape
+                shelli = self.boom_shells[i]
+                transformi = BRepBuilderAPI_Transform(shelli, trsf)
+                # 获取转换后的shape
+                transformed_shapei = transformi.Shape()
+                for j in range(self.part_num):
 
-        for i in range(self.part_num):
-            transi = self.boom_transform[i]
-            x = transi.direction[0]
-            y = transi.direction[1]
-            z = transi.direction[2]
-            if transi.sign == 'x' or transi.sign == '-x':
-                y = 0
-                z = 0
-            if transi.sign == 'y' or transi.sign == '-y':
-                x = 0
-                z = 0
-            if transi.sign == 'z' or transi.sign == '-z':
-                y = 0
-                x = 0
-            trsf = gp_Trsf()
-            translation_vector = gp_Vec(-x, -y, -z)
-            # 设置平移转换
-            trsf.SetTranslation(translation_vector)
-            # 应用转换到shape
-            shelli = self.boom_shells[i]
-            transformi = BRepBuilderAPI_Transform(shelli, trsf)
-            # 获取转换后的shape
-            transformed_shapei = transformi.Shape()
-            for j in range(self.part_num):
+                    if i != j:
+                        transj = self.boom_transform[j]
+                        for _ in range(self.trans_count):
 
-                if i != j:
-                    transj = self.boom_transform[j]
-                    for _ in range(self.trans_count):
+                            distance = (self.trans_count - _ - 1) * \
+                                1.0 / self.trans_count * self.trans_step
+                            x = transj.direction[0] - distance
+                            y = transj.direction[1] - distance
+                            z = transj.direction[2] - distance
 
-                        distance = (self.trans_count - _ - 1) * \
-                            1.0 / self.trans_count * self.trans_step
-                        x = transj.direction[0] - distance
-                        y = transj.direction[1] - distance
-                        z = transj.direction[2] - distance
-                        # if trans.sign == 'x' or trans.sign == '-x':
-                        #     y = self.center_position[1]
-                        #     z = self.center_position[2]
-                        # if trans.sign == 'y' or trans.sign == '-y':
-                        #     x = self.center_position[1]
-                        #     z = self.center_position[2]
-                        # if trans.sign == 'z' or trans.sign == '-z':
-                        #     y = self.center_position[1]
-                        #     x = self.center_position[0]
+                            if transj.sign == 'x' or transj.sign == '-x':
+                                y = 0
+                                z = 0
+                            if transj.sign == 'y' or transj.sign == '-y':
+                                x = 0
+                                z = 0
+                            if transj.sign == 'z' or transj.sign == '-z':
+                                y = 0
+                                x = 0
 
-                        if transj.sign == 'x' or transj.sign == '-x':
-                            y = 0
-                            z = 0
-                        if transj.sign == 'y' or transj.sign == '-y':
-                            x = 0
-                            z = 0
-                        if transj.sign == 'z' or transj.sign == '-z':
-                            y = 0
-                            x = 0
+                            trsf = gp_Trsf()
+                            # 使用gp_Vec定义平移向量
+                            # 修改爆炸距离
+                            translation_vector = gp_Vec(-x, -y, -z)
+                            # 设置平移转换
+                            trsf.SetTranslation(translation_vector)
+                            # 应用转换到shape
+                            shellj = self.boom_shells[j]
+                            transformj = BRepBuilderAPI_Transform(shellj, trsf)
+                            # 获取转换后的shape
+                            transformed_shapej = transformj.Shape()
 
-                        trsf = gp_Trsf()
-                        # 使用gp_Vec定义平移向量
-                        # 修改爆炸距离
-                        translation_vector = gp_Vec(-x, -y, -z)
-                        # 设置平移转换
-                        trsf.SetTranslation(translation_vector)
-                        # 应用转换到shape
-                        shellj = self.boom_shells[j]
-                        transformj = BRepBuilderAPI_Transform(shellj, trsf)
-                        # 获取转换后的shape
-                        transformed_shapej = transformj.Shape()
-
-                        self.result_shells = [
-                            transformed_shapei, transformed_shapej]
-                        self.countij[j, i] += self.interference_checking(transformed_shapej)
+                            self.result_shells = [
+                                transformed_shapei, transformed_shapej]
+                            self.countij[j, i] += self.interference_checking(transformed_shapej)
+                            self.checking_num += 1
+                            pbar.update(1)
+                            count += 1
 
     def interference_checking(self, transformed_shape):
-        if self.checking_num % 100 == 0:
-            print('累计碰撞检测次数' + str(self.checking_num))
-
-        self.checking_num += 1
+        # if self.checking_num % 100 == 0:
+        #     print('累计碰撞检测次数' + str(self.checking_num))
         count = 0
         for j in range(len(self.result_shells) - 1):
             # 获取两个形状
@@ -355,36 +403,6 @@ class OCCAssembly:
                 if volume > 1:
                     count = count + 1
 
-                    # print(self.transformed_ids[j], self.transformed_ids[-1])
-
-        # for id in self.transformed_ids:
-        #     if id == transformed_id:
-        #         continue
-        # for i in range(len(self.result_shells)):
-        #     for j in range(i + 1, len(self.result_shells)):
-        #         # 获取两个形状
-        #         shape_i = self.result_shells[i]
-        #         shape_j = self.result_shells[j]
-        #         from OCC.Core.BRepAlgoAPI import BRepAlgoAPI_Common
-        #         from OCC.Core.TopoDS import TopoDS_Shape
-        #         # 创建一个 BRepAlgoAPI_Common 对象计算它们的布尔交
-        #         boolean_common = BRepAlgoAPI_Common(shape_i, shape_j)
-        #
-        #         # 检查运算是否成功
-        #         if boolean_common.IsDone():
-        #             # 获取布尔交的结果
-        #             common_shape = boolean_common.Shape()
-        #             from OCC.Core.GProp import GProp_GProps
-        #             from OCC.Core.BRepGProp import brepgprop_VolumeProperties
-        #             # 创建一个GProp_GProps对象，用来存储体积属性
-        #             props = GProp_GProps()
-        #             # 计算体积属性
-        #             brepgprop_VolumeProperties(common_shape, props)
-        #             # 获取体积
-        #             volume = props.Mass()
-        #             if volume > 1:
-        #                 count = count + 1
-        # print(count)
         return count
 
     def test_checking(self):
