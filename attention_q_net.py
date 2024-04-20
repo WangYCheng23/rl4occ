@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-19 00:44:42
-LastEditTime: 2024-04-20 00:11:49
+LastEditTime: 2024-04-20 17:09:05
 '''
 import torch
 import torch.nn as nn
@@ -40,7 +40,9 @@ class MultiHeadAttention(nn.Module):
         
         # Apply mask (if provided)
         if mask is not None:
-            scores = scores.masked_fill(mask == 0, float('-inf'))
+            scores = scores.masked_fill(mask[:,:,0].unsqueeze(1).unsqueeze(1).expand(batch_size, -1, seq_len, seq_len)==False, float('-inf'))
+            # mask = int(~mask[:,:,0].unsqueeze(1).unsqueeze(1))*(float('-inf'))
+            # scores = scores*mask
         
         # Apply softmax
         attention_weights = F.softmax(scores, dim=-1)  # (batch_size, num_heads, seq_len, seq_len)
@@ -60,24 +62,25 @@ class MultiHeadAttention(nn.Module):
         return output
 
 class AttentionQNet(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dim, embed_dim, num_heads):
+    def __init__(self, input_dim, output_dim, hidden_dim, embed_dim, num_heads, device=None):
         super(AttentionQNet, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.embed_dim = embed_dim
         self.num_heads = num_heads
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") if not device else device
         
         self.embedding = nn.Linear(input_dim, embed_dim)  # Embedding layer for input
         self.attention = MultiHeadAttention(embed_dim, num_heads)
         self.fc1 = nn.Linear(embed_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, output_dim)
         
-    def forward(self, x, mask=None):
+    def forward(self, x, padding_mask=None):
         x = self.embedding(x)
-        x = self.attention(x, x, x, mask)
+        x = self.attention(x, x, x, padding_mask)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
-        return x
+        return x.squeeze(-1)
 
 if __name__ == "__main__":
     input_dim = 9
@@ -94,6 +97,6 @@ if __name__ == "__main__":
     # 创建掩码张量
     mask = torch.ones_like(output_tensor)  # 先创建一个全 1 的张量
     # 将需要掩盖的位置置零
-    mask[:,masked_positions,:] = 0
+    mask[:,masked_positions] = 0
     output_tensor.masked_fill_(mask==0, -float('inf'))
     print(output_tensor)

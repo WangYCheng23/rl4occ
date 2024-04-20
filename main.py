@@ -4,7 +4,7 @@ Date: 2024-04-20 01:46:06
 LastEditTime: 2024-04-20 01:46:26
 '''
 import os
-from Env import Env
+from env import Env
 from dqnlearn import DQNAgent
 
 

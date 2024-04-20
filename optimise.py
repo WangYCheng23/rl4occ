@@ -3,12 +3,16 @@ from math import floor
 import numpy as np
 import time
 import matplotlib.pyplot as plt  # 导入所需要的库
-from assembly import OCCAssembly
-import time
 
 import copy
+import time
 
-import matplotlib.pyplot as plt
+import torch
+
+from env import Env
+from assembly import OCCAssembly
+from dqnlearn import DQNAgent
+
 
 plt.rcParams['font.sans-serif'] = ['KaiTi']  # 指定默认字体
 
@@ -322,7 +326,10 @@ Path_short, oribestfitnesses = main(
 # print(Path_short)
 initgene = np.array(initgene)
 # 从对应模型的dqn产生的初始解里面加载初始解（1个）并且赋值给原始种群的第一个基因
-initgene[0, :] = np.load(step_filename+'_dqnvalue.npy')
+# initgene[0, :] = np.load(step_filename+'_dqnvalue.npy')
+env = Env(step_filename)
+policy_net = torch.load('./model/best_eval_q_net.pth')
+initgene[0, :] = policy_net
 
 Path_short, bestfitnesses = main(
     step_filename, initgene=initgene)  # 做对加入了dqn初始解的遗传算法对比实验

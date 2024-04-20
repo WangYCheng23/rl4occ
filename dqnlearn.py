@@ -7,9 +7,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from Env import Env
+from env import Env
 from replay_buffer import ReplayBuffer
 from attention_q_net import MultiHeadAttention, AttentionQNet
+from utils import pad_sequences_and_create_mask
 
 class DQNAgent:
 
@@ -74,7 +75,7 @@ class DQNAgent:
             # 创建掩码张量
             mask = torch.ones_like(Q_vals)  # 先创建一个全 1 的张量
             # 将需要掩盖的位置置零
-            mask[:,masked_positions,:] = 0
+            mask[:,masked_positions] = 0
             Q_vals = Q_vals.masked_fill_(mask==0, -float('inf')).detach().cpu().numpy()[0, :]  # 将Q值张量转换为NumPy数组，以便后续处理
             action = np.argmax(Q_vals)  # 选择具有最大Q值的动作作为最优动作
 
@@ -126,29 +127,31 @@ class DQNAgent:
             self.episilon = max(self.episilon-0.004, 0.0003)
 
             # 每10个episode进行一次训练
-            if i % 10 == 0:
-                for step in range(self.n_steps_update):  # 用于每轮训练的核心部分
+            if i % 2 == 0:
+                for _ in range(self.n_steps_update):  # 用于每轮训练的核心部分
                     self.eval_q_net.train()  # 将Q网络设置为训练模式（反向传播时会计算梯度），以便在下一轮训练中更新其参数
                     self.target_q_net.eval()  # 将目标 Q 网络设置为评估模式，以确保在训练过程中不会更新其参数，保持其稳定性。
                     records = self.replay_buffer.sample(self.batch_size)  # 从经验回放缓冲区中随机抽样一批经验数据，大小为batch_size
 
-                    r = torch.FloatTensor(np.array(records['rewards'])) # 将即时奖励转换为PyTorch的张量格式
+                    r = torch.FloatTensor(np.array(records['rewards'])).unsqueeze(-1)  # batch_size x seq_len
 
                     # 将当前状态转换为PyTorch的张量格式
-                    state = torch.FloatTensor(np.array(records['states']))
+                    # state = torch.FloatTensor(np.array(records['states'])) # batch_size x seq_len
+                    state, state_mask = pad_sequences_and_create_mask(records['states']) # batch_size x seq_len
 
                     # 将下一个状态转换为PyTorch的张量格式
-                    next_state = torch.FloatTensor(np.array(records['next_states']))
-                    q_value = self.eval_q_net(state)  # 使用Q网络计算当前状态的Q值
+                    # next_state = torch.FloatTensor(np.array(records['next_states'])) # batch_size x seq_len
+                    next_state, next_state_mask = pad_sequences_and_create_mask(records['next_states']) # batch_size x seq_len
+                    q_value = self.eval_q_net(state, state_mask)  # batch_size x seq_len
 
                     # 将动作转换为PyTorch的张量格式
-                    actions = torch.LongTensor(np.array(records['actions'])).unsqueeze(dim=-1).unsqueeze(dim=-1)
-                    isterminated = torch.BoolTensor(np.array(records['terminals']))
+                    actions = torch.LongTensor(np.array(records['actions'])).unsqueeze(dim=-1)  # batch_size x 1
+                    isterminated = torch.BoolTensor(np.array(records['terminals'])).unsqueeze(dim=-1)  # batch_size x 1
                     
-                    q_value = q_value.gather(1, actions)  # 根据当前状态和动作获取的q值
+                    q_value = q_value.gather(-1, actions)  # 根据当前状态和动作获取的q值    
 
-                    target = r+self.gamma*torch.max(self.target_q_net(next_state), 1, keepdims=True)[
-                        0]*(1-torch.tensor(isterminated).float())  # 根据即时奖励和下个状态下做出最优动作后的q值得到的目标q值
+                    target = r+self.gamma*torch.max(self.target_q_net(next_state, next_state_mask), 1, keepdims=True)[
+                        0]*(~isterminated)  # 根据即时奖励和下个状态下做出最优动作后的q值得到的目标q值 batch_size x 1
 
                     # dqn的拟合q值的损失函数 目标值减去q估计值的平方取平均值来确定loss函数
                     loss = torch.mean((target.detach()-q_value)**2)
