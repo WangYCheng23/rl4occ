@@ -310,7 +310,7 @@ class OCCAssembly:
         
     def compute_countij(self):
         self.countij = np.zeros((self.part_num, self.part_num))
-        count = 0
+        count_ = 0
         with tqdm(total=self.part_num * (self.part_num - 1) * self.trans_count) as pbar:
             pbar.set_description(f'累计碰撞检测次数:')
             for i in range(self.part_num):
@@ -375,7 +375,7 @@ class OCCAssembly:
                             self.countij[j, i] += self.interference_checking(transformed_shapej)
                             self.checking_num += 1
                             pbar.update(1)
-                            count += 1
+                            count_ += 1
 
     def interference_checking(self, transformed_shape):
         # if self.checking_num % 100 == 0:

@@ -58,8 +58,8 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         for i in range(len(one_path)):
             for j in range(i+1, len(one_path)):  # 利用提前计算好的邻居两量碰撞次数来统计出总的碰撞次数
 
-                # interference_count = interference_count + self.assembly.countij[one_path[j], one_path[i]]
-                interference_count = interference_count + self.assembly.get_ijcount(i,j)
+                interference_count = interference_count + self.assembly.countij[one_path[j], one_path[i]]
+                # interference_count = interference_count + self.assembly.get_ijcount(i,j)
 
         # 统计装配方向改变次数
         pre_direction = self.assembly.boom_transform[one_path[0]].sign

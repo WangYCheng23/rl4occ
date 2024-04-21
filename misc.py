@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-17 20:18:16
-LastEditTime: 2024-04-20 17:03:29
+LastEditTime: 2024-04-22 00:34:24
 '''
 import torch
 from assembly import OCCAssembly
@@ -48,21 +48,45 @@ import numpy as np
 
 
 ###########################################
-batch_size = 16
-num_heads = 4
-sequence_length = 19
+# batch_size = 16
+# num_heads = 4
+# sequence_length = 19
 
 
-# 注意力矩阵
-attention_matrix = torch.randn(batch_size, num_heads, sequence_length, sequence_length)
+# # 注意力矩阵
+# attention_matrix = torch.randn(batch_size, num_heads, sequence_length, sequence_length)
 
-# mask矩阵 batch_size*sequence_length
-mask_matrix = torch.randint(0, 2, (batch_size, sequence_length))
-# mask_matrix = torch.tensor([[1, 0, 0], [1, 1, 0], [1, 1, 1]])  # 举例一个3x3的mask矩阵
+# # mask矩阵 batch_size*sequence_length
+# mask_matrix = torch.randint(0, 2, (batch_size, sequence_length))
+# # mask_matrix = torch.tensor([[1, 0, 0], [1, 1, 0], [1, 1, 1]])  # 举例一个3x3的mask矩阵
 
-# 将mask矩阵扩展到与注意力矩阵相同的维度
-expanded_mask = mask_matrix.unsqueeze(1).unsqueeze(2).expand(-1, num_heads, sequence_length, sequence_length)
+# # 将mask矩阵扩展到与注意力矩阵相同的维度
+# expanded_mask = mask_matrix.unsqueeze(1).unsqueeze(2).expand(-1, num_heads, sequence_length, sequence_length)
 
-# 将需要mask的位置置为负无穷
-attention_matrix.masked_fill_(expanded_mask == 1, float('-inf'))
-print(attention_matrix)
+# # 将需要mask的位置置为负无穷
+# attention_matrix.masked_fill_(expanded_mask == 1, float('-inf'))
+# print(attention_matrix)
+###########################################
+from assembly import OCCAssembly
+import pickle
+
+def save_assembly_to_pickle(assembly_path):
+    filename = os.path.join('./pickle_data',assembly_path.split('/')[-1].replace('.step', '.pkl'))
+    assembly = OCCAssembly(assembly_path)
+    print(assembly.get_part_num())
+    assembly.create_boom()
+    assembly.compute_countij() 
+    with open(filename, 'wb') as f:
+        pickle.dump(assembly, f)
+
+ass_path = './data/all/assembly_120.step'
+save_assembly_to_pickle(ass_path)
+
+def load_assembly_from_pickle(assembly_path):
+    with open(assembly_path, 'rb') as f:
+        assembly = pickle.load(f)
+    return assembly
+
+assembly = load_assembly_from_pickle('./pickle_data/assembly_120.pkl')  
+# assembly.display_boom()
+print(assembly.countij)
