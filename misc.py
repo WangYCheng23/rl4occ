@@ -1,8 +1,10 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-17 20:18:16
-LastEditTime: 2024-04-22 00:34:24
+LastEditTime: 2024-04-22 14:55:37
 '''
+import multiprocessing
+import time
 import torch
 from assembly import OCCAssembly
 import os
@@ -79,14 +81,44 @@ def save_assembly_to_pickle(assembly_path):
     with open(filename, 'wb') as f:
         pickle.dump(assembly, f)
 
-ass_path = './data/all/assembly_120.step'
-save_assembly_to_pickle(ass_path)
-
 def load_assembly_from_pickle(assembly_path):
     with open(assembly_path, 'rb') as f:
         assembly = pickle.load(f)
     return assembly
 
-assembly = load_assembly_from_pickle('./pickle_data/assembly_120.pkl')  
-# assembly.display_boom()
-print(assembly.countij)
+def worker(assembly_path):
+    try:
+        # 这里是你的工作逻辑
+        print(f"Process {assembly_path} is running")
+        save_assembly_to_pickle(assembly_path)  # 假设我们在这里模拟工作
+        # 如果发生异常，则会跳到 except 块
+        # raise ValueError("Something went wrong!")  # 假设这里发生了一个错误
+    except Exception as e:
+        print(f"Process {assembly_path} encountered an exception: {e}")
+        # 可以选择在这里记录日志或者执行其他清理工作
+        # 由于异常，我们结束这个进程
+        return
+
+    # 如果没有异常，正常结束进程
+    print(f"Process {assembly_path} finished successfully")
+
+def parallel_pack_step_files(step_files, num_processes):
+    """并行打包.step文件的函数""" 
+    # 创建一个进程池
+    pool = multiprocessing.Pool(processes=num_processes)
+    
+    # 使用多进程映射执行worker函数
+    pool.map(worker, step_files)
+    
+    # 关闭进程池
+    pool.close()
+    pool.join()
+
+# 假设您有一个包含所有.step文件路径的列表
+step_files_list = [os.path.join(f'D:\\Document\\work\\rl4occ\\data\\train',file_path) for file_path in os.listdir(f'D:\\Document\\work\\rl4occ\\data\\train')]
+
+# 选择您想要使用的并行进程数量
+num_processes = multiprocessing.cpu_count()  # 使用所有可用的CPU核心
+
+# 调用函数开始并行打包
+parallel_pack_step_files(step_files_list, 2)

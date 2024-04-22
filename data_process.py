@@ -1,14 +1,14 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-15 22:28:33
-LastEditTime: 2024-04-15 23:44:49
+LastEditTime: 2024-04-22 10:39:00
 '''
 import os
 import shutil
 import random
 from tqdm import tqdm
 
-root_dir = "/media/wangc/Data/数据集/"
+root_dir = f"D:\\Document\\baiduyun_doc\\数据集"
 
 # 指定目标目录
 target_directory = './data/'
