@@ -128,7 +128,7 @@ class DQNAgent:
             # # 把采样出来的经验存储到replay_buffer缓存（经验回访缓冲区）
             # self.replay_buffer.store_records(records)
             # episilon每一轮都要减少一个小数值，在每一轮训练中逐渐减小 ε（epsilon）值，即探索率。ε是在DQN中用于控制探索和利用之间的平衡的重要参数。通过逐渐减小 ε，模型在训练的早期会更多地进行探索，随着训练的进行，模型会更多地利用已经学到的知识。
-            self.episilon = max(self.episilon-0.001, 0.0003)
+            self.episilon = max(self.episilon*0.999, 0.0003)
 
             # 每10个episode进行一次训练
             if i>=500 and i % 20 == 0:
@@ -166,10 +166,9 @@ class DQNAgent:
 
                     step_ = step_+1  # 更新步数计数器
 
-                    if step_ % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
+                    # if step_ % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
 
-                        self.target_q_net.load_state_dict(
-                            self.eval_q_net.state_dict())  # 更新目标Q网络的参数
+                self.target_q_net.load_state_dict(self.eval_q_net.state_dict())  # 更新目标Q网络的参数
 
                 self.save_model(i)  # 保存模型的参数
 
