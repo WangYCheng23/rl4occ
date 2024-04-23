@@ -3,5 +3,3 @@
 *.npy
 __pycache__
 *.pkl
-/logs/
-/model/
