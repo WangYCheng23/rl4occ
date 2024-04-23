@@ -17,6 +17,7 @@ class DQNAgent:
     def __init__(self, env, buffer_size):  # 定义环境对象和经验回放缓冲区的大小
         print("---初始化dqn agent---")
         self.env = env  # 定义环境对象
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 定义设备类型，如果GPU可用则使用GPU，否则使用CPU
         
         # Q-net 超参数
         self.input_dim = 10
@@ -34,20 +35,32 @@ class DQNAgent:
         self.replay_buffer = ReplayBuffer(buffer_size)
         
         # 训练超参数
-        self.n_steps_update = 5  # 定义每次训练时使用的步数
+        self.n_steps_update = 10  # 定义每次训练时使用的步数
         self.batch_size = 64  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
         self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=2e-4)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.99)
         self.replace_steps_cycle = 60  # 定义替换目标网络参数的周期步数
         self.episilon = 0.98  # 定义ε贪婪策略中的ε值
         self.gamma = 0.998  # 定义强化学习中的折扣因子，用于调节当前奖励和未来奖励的重要性
         self.save_cycyle = 10  # 定义保存模型的周期步数
 
+        self.step = 0  # 定义步数计数器
         self.log = SummaryWriter(f'./logs/{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}')
         
-    def stepped_episilon(self):
-        return 0.98  # 用于ε贪婪策略，用于在探索和利用之间进行权衡
-
+    def update_episilon(self):
+        # 用于ε贪婪策略，用于在探索和利用之间进行权衡 更新episilon 反指数
+        if self.step < 300:
+            self.episilon = 0.98
+        elif self.step < 500:
+            self.episilon = 0.89
+        elif self.step < 700:
+            self.episilon = 0.74
+        elif self.step < 900:
+            self.episilon = 0.59
+        else:
+            self.episilon *= 0.07
+        
     def save_model(self, itr):  # 保存q估值网络
         # os.mkdir(f'./model/{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
         torch.save(self.eval_q_net, f'./model/eval_q_net-{itr}.pth')
@@ -58,7 +71,7 @@ class DQNAgent:
     def choose_action(self, state):  # 在给定状态下选择动作的过程
 
         # 根据ε-greedy策略来选择动作，当随机数小于ε时，以一定概率选择随机动作
-        if np.random.uniform(0, 1) < self.stepped_episilon():
+        if np.random.uniform(0, 1) < self.episilon:
 
             # maxactionid = len(self.env.stepedparts)  # 获取已经执行的动作数量，用于限制后续动作的选择
             # p = np.ones([self.n_actions])  # 初始化动作概率数组，所有动作的概率都设为1
@@ -70,16 +83,17 @@ class DQNAgent:
             action = int(np.random.choice(self.env.unstepparts))  # 根据概率分布选择动作
 
         else: 
-            state = torch.FloatTensor(state).reshape(1,-1,self.input_dim)
-            self.eval_q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
-            Q_vals = self.eval_q_net(state)  # 使用Q网络预测当前状态下各个动作的Q值
-            masked_positions = self.env.stepedparts
-            # 创建掩码张量
-            mask = torch.ones_like(Q_vals)  # 先创建一个全 1 的张量
-            # 将需要掩盖的位置置零
-            mask[:,masked_positions] = 0
-            Q_vals = Q_vals.masked_fill_(mask==0, -float('inf')).detach().cpu().numpy()[0, :]  # 将Q值张量转换为NumPy数组，以便后续处理
-            action = np.argmax(Q_vals)  # 选择具有最大Q值的动作作为最优动作
+            state = torch.FloatTensor(state).reshape(1,-1,self.input_dim).to(self.device)  # 将当前状态转换为PyTorch的张量格式
+            # self.eval_q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
+            with torch.no_grad():
+                Q_vals = self.eval_q_net(state)  # 使用Q网络预测当前状态下各个动作的Q值
+                masked_positions = self.env.stepedparts
+                # 创建掩码张量
+                mask = torch.ones_like(Q_vals)  # 先创建一个全 1 的张量
+                # 将需要掩盖的位置置零
+                mask[:,masked_positions] = 0
+                Q_vals = Q_vals.masked_fill_(mask==0, -float('inf')).detach().cpu().numpy()[0, :]  # 将Q值张量转换为NumPy数组，以便后续处理
+                action = np.argmax(Q_vals)  # 选择具有最大Q值的动作作为最优动作
 
         return action  # 返回选择的动作
 
@@ -87,7 +101,7 @@ class DQNAgent:
         accrewards = []  # 创建一个空列表 accrewards，用于存储每轮训练的累积奖励
         rewards_per_steps = []  # 创建一个空列表 rewards_per_steps，用于存储每轮训练的奖励/步数
 
-        step_ = 0  # 初始化步数计数器 step_ 为0
+        # self.step = 0  # 初始化步数计数器 step_ 为0
         for i in range(episode_nums):  # 循环执行训练指定次数 episode_nums
 
             # records = {'state': [], 'next_state': [], 'actions': [], 'r': [
@@ -112,6 +126,7 @@ class DQNAgent:
                 # records['actions'].append([action])
                 accreward = accreward+reward
                 count += 1
+                self.step += 1
                 # records['r'].append([reward])
                 # records['isterminated'].append([isterminated])  # 将获取的各种信息添加到记录里面
                 
@@ -128,34 +143,32 @@ class DQNAgent:
             # # 把采样出来的经验存储到replay_buffer缓存（经验回访缓冲区）
             # self.replay_buffer.store_records(records)
             # episilon每一轮都要减少一个小数值，在每一轮训练中逐渐减小 ε（epsilon）值，即探索率。ε是在DQN中用于控制探索和利用之间的平衡的重要参数。通过逐渐减小 ε，模型在训练的早期会更多地进行探索，随着训练的进行，模型会更多地利用已经学到的知识。
-            self.episilon = max(self.episilon*0.999, 0.0003)
+            self.update_episilon()
 
-            # 每10个episode进行一次训练
-            if i>=500 and i % 20 == 0:
+            # 每20个episode进行一次训练
+            if i % 2 == 0:
                 for _ in range(self.n_steps_update):  # 用于每轮训练的核心部分
-                    self.eval_q_net.train()  # 将Q网络设置为训练模式（反向传播时会计算梯度），以便在下一轮训练中更新其参数
-                    self.target_q_net.eval()  # 将目标 Q 网络设置为评估模式，以确保在训练过程中不会更新其参数，保持其稳定性。
                     records = self.replay_buffer.sample(self.batch_size)  # 从经验回放缓冲区中随机抽样一批经验数据，大小为batch_size
 
-                    r = torch.FloatTensor(np.array(records['rewards'])).unsqueeze(-1)  # batch_size x seq_len
-
-                    # 将当前状态转换为PyTorch的张量格式
-                    # state = torch.FloatTensor(np.array(records['states'])) # batch_size x seq_len
+                    r = torch.FloatTensor(np.array(records['rewards'])).unsqueeze(-1).to(self.device)  # batch_size x seq_len
                     state, state_mask = pad_sequences_and_create_mask(records['states']) # batch_size x seq_len
-
-                    # 将下一个状态转换为PyTorch的张量格式
-                    # next_state = torch.FloatTensor(np.array(records['next_states'])) # batch_size x seq_len
+                    state = state.to(self.device)
+                    state_mask = state_mask.to(self.device)
                     next_state, next_state_mask = pad_sequences_and_create_mask(records['next_states']) # batch_size x seq_len
-                    q_value = self.eval_q_net(state, state_mask)  # batch_size x seq_len
-
-                    # 将动作转换为PyTorch的张量格式
-                    actions = torch.LongTensor(np.array(records['actions'])).unsqueeze(dim=-1)  # batch_size x 1
-                    isterminated = torch.BoolTensor(np.array(records['terminals'])).unsqueeze(dim=-1)  # batch_size x 1
+                    next_state = next_state.to(self.device) 
+                    next_state_mask = next_state_mask.to(self.device)
+                    actions = torch.LongTensor(np.array(records['actions'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
+                    isterminated = torch.BoolTensor(np.array(records['terminals'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
                     
-                    q_value = q_value.gather(-1, actions)  # 根据当前状态和动作获取的q值    
-
-                    target = r+self.gamma*torch.max(self.target_q_net(next_state, next_state_mask), 1, keepdims=True)[
-                        0]*(~isterminated)  # 根据即时奖励和下个状态下做出最优动作后的q值得到的目标q值 batch_size x 1
+                    q_value = self.eval_q_net(state, state_mask)  # batch_size x seq_len
+                    q_value = q_value.gather(-1, actions)  # 根据当前状态和动作获取的q值                     
+                       
+                    # DDQN
+                    with torch.no_grad():
+                        next_q_value = self.eval_q_net(next_state, next_state_mask)  # 获取下一个状态下的q值
+                        max_action_id = torch.argmax(next_q_value, dim=-1, keepdim=True)  # batch_size x 1
+                        target_q_value = self.target_q_net(next_state, next_state_mask)
+                        target = r+self.gamma*target_q_value.gather(-1, max_action_id)*(~isterminated)  # 根据即时奖励和下个状态下做出最优动作后的q值得到的目标q值 batch_size x 1
 
                     # dqn的拟合q值的损失函数 目标值减去q估计值的平方取平均值来确定loss函数
                     loss = torch.mean((target.detach()-q_value)**2)
@@ -164,7 +177,7 @@ class DQNAgent:
                     loss.backward()  # 反向传播，计算梯度
                     self.optimizer.step()  # 优化器根据梯度更新网络参数
 
-                    step_ = step_+1  # 更新步数计数器
+                    # step_ = step_+1  # 更新步数计数器
 
                     # if step_ % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
 

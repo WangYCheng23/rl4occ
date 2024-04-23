@@ -70,10 +70,10 @@ class AttentionQNet(nn.Module):
         self.num_heads = num_heads
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") if not device else device
         
-        self.embedding = nn.Linear(input_dim, embed_dim)  # Embedding layer for input
-        self.attention = MultiHeadAttention(embed_dim, num_heads)
-        self.fc1 = nn.Linear(embed_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, output_dim)
+        self.embedding = nn.Linear(input_dim, embed_dim).to(self.device)  # Embedding layer for input
+        self.attention = MultiHeadAttention(embed_dim, num_heads).to(self.device)
+        self.fc1 = nn.Linear(embed_dim, hidden_dim).to(self.device)
+        self.fc2 = nn.Linear(hidden_dim, output_dim).to(self.device)
         
     def forward(self, x, padding_mask=None):
         x = self.embedding(x)
