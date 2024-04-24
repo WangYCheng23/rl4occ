@@ -72,13 +72,17 @@ class AttentionQNet(nn.Module):
         
         self.embedding = nn.Linear(input_dim, embed_dim).to(self.device)  # Embedding layer for input
         self.attention = MultiHeadAttention(embed_dim, num_heads).to(self.device)
+        self.norm1 = nn.LayerNorm(embed_dim)        
         self.fc1 = nn.Linear(embed_dim, hidden_dim).to(self.device)
+        self.norm2 = nn.LayerNorm(hidden_dim)        
         self.fc2 = nn.Linear(hidden_dim, output_dim).to(self.device)
-        
+   
     def forward(self, x, padding_mask=None):
         x = self.embedding(x)
         x = self.attention(x, x, x, padding_mask)
+        x = self.norm1(x)
         x = F.relu(self.fc1(x))
+        x = self.norm2(x)
         x = self.fc2(x)
         return x.squeeze(-1)
 

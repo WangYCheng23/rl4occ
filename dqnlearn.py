@@ -22,13 +22,16 @@ class DQNAgent:
         # Q-net 超参数
         self.input_dim = 10
         self.output_dim = 1
-        self.hidden_dim = 1024
-        self.embed_dim = 512
+        self.hidden_dim = 512
+        self.embed_dim = 256
         self.num_heads = 16
         
         self.eval_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的估计网络
         self.target_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的目标网络
         # 目标网络和估值网络权重一开始相同，为了在深度 Q 学习算法中稳定训练和提高效率
+        for param in self.eval_q_net.parameters():
+            if param.requires_grad:  # 确保参数是可训练的
+                nn.init.orthogonal_(param)
         self.target_q_net.load_state_dict(self.eval_q_net.state_dict())
         
         # 创建一个大小为buffer_size的经验回放缓冲区，用于存储智能体与环境交互的经验数据
@@ -39,25 +42,26 @@ class DQNAgent:
         self.batch_size = 256  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
         self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=5e-3)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.99)
+        # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.99)
         self.replace_steps_cycle = 200  # 定义替换目标网络参数的周期步数
         self.episilon = 0.98  # 定义ε贪婪策略中的ε值
         self.gamma = 0.998  # 定义强化学习中的折扣因子，用于调节当前奖励和未来奖励的重要性
         self.save_cycyle = 10  # 定义保存模型的周期步数
 
         self.step = 0  # 定义步数计数器
+        self.episode = 0  # 定义轮数计数器
         self.datetime = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         self.log = SummaryWriter(f'./logs/{self.datetime}')
         
     def update_episilon(self):
         # 用于ε贪婪策略，用于在探索和利用之间进行权衡 更新episilon 反指数
-        if self.step < 1000:
+        if self.episode < 1000:
             self.episilon = 0.98
-        elif self.step < 2500:
+        elif self.episode < 2500:
             self.episilon = 0.89
-        elif self.step < 5000:
+        elif self.episode < 5000:
             self.episilon = 0.74
-        elif self.step < 9000:
+        elif self.episode < 9000:
             self.episilon = 0.59
         else:
             self.episilon *= 0.0001
@@ -106,7 +110,7 @@ class DQNAgent:
 
         # self.step = 0  # 初始化步数计数器 step_ 为0
         for i in range(episode_nums):  # 循环执行训练指定次数 episode_nums
-
+            self.episode += 1  # 更新轮数计数器
             # records = {'state': [], 'next_state': [], 'actions': [], 'r': [
             # ], 'isterminated': []}  # 创建一个字典 records，用于存储每个 episode 中的经验数据
 
@@ -139,6 +143,7 @@ class DQNAgent:
             print('episode:', i, ' accreward:', accreward, 'reward_per_step:', accreward/(count+1e-6))
             self.log.add_scalar('exploration_rate', self.episilon, i)
             self.log.add_scalar('reward_per_episode', accreward/(count+1e-6), i)
+            self.log.add_scalar('experience_replay_buffer_size', self.replay_buffer.size(), i)
             accrewards.append(accreward)
             rewards_per_steps.append(accreward/(count+1e-6))
             # 将记录的经验数据转换为 NumPy 数组格式，以便存储到经验回放缓冲区中
@@ -149,7 +154,8 @@ class DQNAgent:
             self.update_episilon()
 
             # 每20个episode进行一次训练
-            if i>1000 and i % self.replace_steps_cycle == 0:
+            if i>0 and i % self.replace_steps_cycle == 0:
+                mean_loss = 0
                 for update_step in range(self.n_steps_update):  # 用于每轮训练的核心部分
                     records = self.replay_buffer.sample(self.batch_size)  # 从经验回放缓冲区中随机抽样一批经验数据，大小为batch_size
 
@@ -182,6 +188,8 @@ class DQNAgent:
 
                     # step_ = step_+1  # 更新步数计数器
                     print(f"episode{i}-{update_step}:{loss}")
+                    mean_loss += loss.item()/self.n_steps_update
+                self.logs.add_scalar('loss', mean_loss, i)
                     # if step_ % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
 
                 self.target_q_net.load_state_dict(self.eval_q_net.state_dict())  # 更新目标Q网络的参数
