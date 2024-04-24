@@ -42,7 +42,7 @@ if test:
     next_state, reward, isterminated = env.step(action)
     print(f"下一个状态:{next_state}\n即时奖励:{reward}\n是否终止:{isterminated}")
 
-episode_nums = 2000  # 定义了训练的总回合数
+episode_nums = 50000  # 定义了训练的总回合数
 
 dqn_agent.learn(episode_nums)
 dqn_agent.log.close()  # 保存训练好的模型

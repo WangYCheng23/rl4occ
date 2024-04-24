@@ -22,9 +22,9 @@ class DQNAgent:
         # Q-net 超参数
         self.input_dim = 10
         self.output_dim = 1
-        self.hidden_dim = 64
-        self.embed_dim = 16
-        self.num_heads = 4
+        self.hidden_dim = 1024
+        self.embed_dim = 512
+        self.num_heads = 16
         
         self.eval_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的估计网络
         self.target_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的目标网络
@@ -36,11 +36,11 @@ class DQNAgent:
         
         # 训练超参数
         self.n_steps_update = 10  # 定义每次训练时使用的步数
-        self.batch_size = 64  # 定义每次训练时的批量大小
+        self.batch_size = 256  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
-        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=2e-4)
+        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=5e-3)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.99)
-        self.replace_steps_cycle = 60  # 定义替换目标网络参数的周期步数
+        self.replace_steps_cycle = 200  # 定义替换目标网络参数的周期步数
         self.episilon = 0.98  # 定义ε贪婪策略中的ε值
         self.gamma = 0.998  # 定义强化学习中的折扣因子，用于调节当前奖励和未来奖励的重要性
         self.save_cycyle = 10  # 定义保存模型的周期步数
@@ -51,16 +51,16 @@ class DQNAgent:
         
     def update_episilon(self):
         # 用于ε贪婪策略，用于在探索和利用之间进行权衡 更新episilon 反指数
-        if self.step < 300:
+        if self.step < 1000:
             self.episilon = 0.98
-        elif self.step < 500:
+        elif self.step < 2500:
             self.episilon = 0.89
-        elif self.step < 700:
+        elif self.step < 5000:
             self.episilon = 0.74
-        elif self.step < 900:
+        elif self.step < 9000:
             self.episilon = 0.59
         else:
-            self.episilon *= 0.07
+            self.episilon *= 0.0001
         
     def save_model(self, itr):  # 保存q估值网络
         if not os.path.exists(f'./model/{self.datetime}'):
@@ -149,7 +149,7 @@ class DQNAgent:
             self.update_episilon()
 
             # 每20个episode进行一次训练
-            if i % 2 == 0:
+            if i>1000 and i % self.replace_steps_cycle == 0:
                 for update_step in range(self.n_steps_update):  # 用于每轮训练的核心部分
                     records = self.replay_buffer.sample(self.batch_size)  # 从经验回放缓冲区中随机抽样一批经验数据，大小为batch_size
 
