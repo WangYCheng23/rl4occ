@@ -46,7 +46,8 @@ class DQNAgent:
         self.save_cycyle = 10  # 定义保存模型的周期步数
 
         self.step = 0  # 定义步数计数器
-        self.log = SummaryWriter(f'./logs/{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}')
+        self.datetime = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        self.log = SummaryWriter(f'./logs/{self.datetime}')
         
     def update_episilon(self):
         # 用于ε贪婪策略，用于在探索和利用之间进行权衡 更新episilon 反指数
@@ -62,8 +63,10 @@ class DQNAgent:
             self.episilon *= 0.07
         
     def save_model(self, itr):  # 保存q估值网络
+        if not os.path.exists(f'./model/{self.datetime}'):
+            os.mkdir(f'./model/{self.datetime}')
         # os.mkdir(f'./model/{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
-        torch.save(self.eval_q_net, f'./model/eval_q_net-{itr}.pth')
+        torch.save(self.eval_q_net, f'./model/{self.datetime}/eval_q_net-{itr}.pth')
 
     def load_model(self):  # 加载深度Q学习算法中的Q值估计网络（q_net）便于继续训练和预测
         self.eval_q_net = torch.load('./model/best_eval_q_net.pth')
