@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-19 00:44:42
-LastEditTime: 2024-04-20 17:09:05
+LastEditTime: 2024-04-24 21:49:44
 '''
 import torch
 import torch.nn as nn
@@ -72,19 +72,27 @@ class AttentionQNet(nn.Module):
         
         self.embedding = nn.Linear(input_dim, embed_dim).to(self.device)  # Embedding layer for input
         self.attention = MultiHeadAttention(embed_dim, num_heads).to(self.device)
-        self.norm1 = nn.LayerNorm(embed_dim)        
+        self.norm1 = nn.LayerNorm(embed_dim).to(self.device)        
         self.fc1 = nn.Linear(embed_dim, hidden_dim).to(self.device)
-        self.norm2 = nn.LayerNorm(hidden_dim)        
+        self.norm2 = nn.LayerNorm(hidden_dim).to(self.device)     
         self.fc2 = nn.Linear(hidden_dim, output_dim).to(self.device)
+        
+        # 添加一个残差连接层，用于匹配embedding到fc1的维度
+        self.res_fc1 = nn.Linear(input_dim, hidden_dim).to(self.device)
    
     def forward(self, x, padding_mask=None):
         x = self.embedding(x)
-        x = self.attention(x, x, x, padding_mask)
-        x = self.norm1(x)
-        x = F.relu(self.fc1(x))
-        x = self.norm2(x)
-        x = self.fc2(x)
-        return x.squeeze(-1)
+        x_attention = self.attention(x, x, x, padding_mask)  # 注意力机制
+        x_norm1 = self.norm1(x_attention)
+        x_fc1 = F.relu(self.fc1(x_norm1))  # 第一个全连接层
+
+        # 添加残差链接，将embedding层的输出通过一个线性层映射到fc1的维度，并与fc1的输出相加
+        x_res_fc1 = self.res_fc1(x) + x_fc1
+
+        x_norm2 = self.norm2(x_res_fc1)
+        x_fc2 = self.fc2(x_norm2)  # 第二个全连接层
+
+        return x_fc2.squeeze(-1)
 
 if __name__ == "__main__":
     input_dim = 9

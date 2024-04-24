@@ -29,9 +29,9 @@ class DQNAgent:
         self.eval_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的估计网络
         self.target_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的目标网络
         # 目标网络和估值网络权重一开始相同，为了在深度 Q 学习算法中稳定训练和提高效率
-        for param in self.eval_q_net.parameters():
-            if param.requires_grad:  # 确保参数是可训练的
-                nn.init.orthogonal_(param)
+        # for param in self.eval_q_net.parameters():
+        #     if param.requires_grad:  # 确保参数是可训练的
+        #         nn.init.orthogonal_(param)
         self.target_q_net.load_state_dict(self.eval_q_net.state_dict())
         
         # 创建一个大小为buffer_size的经验回放缓冲区，用于存储智能体与环境交互的经验数据
@@ -143,7 +143,7 @@ class DQNAgent:
             print('episode:', i, ' accreward:', accreward, 'reward_per_step:', accreward/(count+1e-6))
             self.log.add_scalar('exploration_rate', self.episilon, i)
             self.log.add_scalar('reward_per_episode', accreward/(count+1e-6), i)
-            self.log.add_scalar('experience_replay_buffer_size', self.replay_buffer.size(), i)
+            self.log.add_scalar('experience_replay_buffer_size', len(self.replay_buffer), i)
             accrewards.append(accreward)
             rewards_per_steps.append(accreward/(count+1e-6))
             # 将记录的经验数据转换为 NumPy 数组格式，以便存储到经验回放缓冲区中
@@ -189,7 +189,7 @@ class DQNAgent:
                     # step_ = step_+1  # 更新步数计数器
                     print(f"episode{i}-{update_step}:{loss}")
                     mean_loss += loss.item()/self.n_steps_update
-                self.logs.add_scalar('loss', mean_loss, i)
+                self.log.add_scalar('loss', mean_loss, i)
                     # if step_ % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
 
                 self.target_q_net.load_state_dict(self.eval_q_net.state_dict())  # 更新目标Q网络的参数
