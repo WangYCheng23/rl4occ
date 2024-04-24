@@ -147,7 +147,7 @@ class DQNAgent:
 
             # 每20个episode进行一次训练
             if i % 2 == 0:
-                for _ in range(self.n_steps_update):  # 用于每轮训练的核心部分
+                for update_step in range(self.n_steps_update):  # 用于每轮训练的核心部分
                     records = self.replay_buffer.sample(self.batch_size)  # 从经验回放缓冲区中随机抽样一批经验数据，大小为batch_size
 
                     r = torch.FloatTensor(np.array(records['rewards'])).unsqueeze(-1).to(self.device)  # batch_size x seq_len
@@ -178,7 +178,7 @@ class DQNAgent:
                     self.optimizer.step()  # 优化器根据梯度更新网络参数
 
                     # step_ = step_+1  # 更新步数计数器
-
+                    print(f"episode{i}-{update_step}:{loss}")
                     # if step_ % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
 
                 self.target_q_net.load_state_dict(self.eval_q_net.state_dict())  # 更新目标Q网络的参数
