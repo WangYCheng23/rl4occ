@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-15 23:30:56
-LastEditTime: 2024-04-20 01:29:42
+LastEditTime: 2024-04-25 09:22:51
 '''
 import threading
 import numpy as np
@@ -36,13 +36,13 @@ class ReplayBuffer:
         """
         Shuffle the buffer randomly.
         """
-        with self._lock:
-            permutation = np.random.permutation(len(self.states))
-            self.states = [self.states[i] for i in permutation]
-            self.next_states = [self.next_states[i] for i in permutation]
-            self.actions = [self.actions[i] for i in permutation]
-            self.rewards = [self.rewards[i] for i in permutation]
-            self.terminals = [self.terminals[i] for i in permutation]
+
+        permutation = np.random.permutation(len(self.states))
+        self.states = [self.states[i] for i in permutation]
+        self.next_states = [self.next_states[i] for i in permutation]
+        self.actions = [self.actions[i] for i in permutation]
+        self.rewards = [self.rewards[i] for i in permutation]
+        self.terminals = [self.terminals[i] for i in permutation]
     
     def add_experience(self, state, action, reward, next_state, terminal):
         """
@@ -55,18 +55,18 @@ class ReplayBuffer:
             next_state (numpy.ndarray): The next state after taking the action.
             terminal (bool): Whether the episode has terminated.
         """
-        with self._lock:  # use a lock to ensure thread safety
-            if len(self.states) >= self.capacity:
-                self.remove_oldest_experience()
 
-            # Add the new experience to the buffer
-            self.states.append(state)
-            self.next_states.append(next_state)
-            self.actions.append(action)
-            self.rewards.append(reward)
-            self.terminals.append(terminal)
+        if len(self.states) >= self.capacity:
+            self.remove_oldest_experience()
 
-            self.current_idx = (self.current_idx + 1) % self.capacity
+        # Add the new experience to the buffer
+        self.states.append(state)
+        self.next_states.append(next_state)
+        self.actions.append(action)
+        self.rewards.append(reward)
+        self.terminals.append(terminal)
+
+        self.current_idx = (self.current_idx + 1) % self.capacity
 
     def sample(self, batch_size):
         """

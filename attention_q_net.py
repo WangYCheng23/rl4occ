@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-19 00:44:42
-LastEditTime: 2024-04-24 21:49:44
+LastEditTime: 2024-04-24 21:51:36
 '''
 import torch
 import torch.nn as nn
@@ -78,7 +78,7 @@ class AttentionQNet(nn.Module):
         self.fc2 = nn.Linear(hidden_dim, output_dim).to(self.device)
         
         # 添加一个残差连接层，用于匹配embedding到fc1的维度
-        self.res_fc1 = nn.Linear(input_dim, hidden_dim).to(self.device)
+        self.res_fc1 = nn.Linear(embed_dim, hidden_dim).to(self.device)
    
     def forward(self, x, padding_mask=None):
         x = self.embedding(x)

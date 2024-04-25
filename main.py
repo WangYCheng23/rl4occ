@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-20 01:46:06
-LastEditTime: 2024-04-22 23:51:53
+LastEditTime: 2024-04-25 09:36:29
 '''
 import os
 import sys
@@ -42,7 +42,7 @@ if test:
     next_state, reward, isterminated = env.step(action)
     print(f"下一个状态:{next_state}\n即时奖励:{reward}\n是否终止:{isterminated}")
 
-episode_nums = 50000  # 定义了训练的总回合数
+episode_nums = 5000  # 定义了训练的总回合数
 
 dqn_agent.learn(episode_nums)
 dqn_agent.log.close()  # 保存训练好的模型
