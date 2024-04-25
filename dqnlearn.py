@@ -41,7 +41,7 @@ class DQNAgent:
         self.n_steps_update = 10  # 定义每次训练时使用的步数
         self.batch_size = 64  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
-        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=1e-3)
+        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=3e-5)
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.99)
         self.replace_steps_cycle = 20  # 定义替换目标网络参数的周期步数
         self.episilon = 0.98  # 定义ε贪婪策略中的ε值

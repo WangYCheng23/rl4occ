@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-20 01:46:06
-LastEditTime: 2024-04-25 09:36:29
+LastEditTime: 2024-04-25 12:21:20
 '''
 import os
 import sys
@@ -20,7 +20,7 @@ elif sys.platform == 'win32':
 step_filenames = [os.path.join(train_dir, path) for path in os.listdir(train_dir)]
 pickle_dataset = [os.path.join(pickle_dir, pickle_path) for pickle_path in os.listdir(pickle_dir)]
 env = Env(step_filenames, pickle_dataset)
-buffer_size = 30000  # 定义了经验回放缓冲区的大小
+buffer_size = 5000  # 定义了经验回放缓冲区的大小
 dqn_agent = DQNAgent(env, buffer_size)
 test = False
 if test:
