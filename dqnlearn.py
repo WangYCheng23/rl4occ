@@ -43,7 +43,7 @@ class DQNAgent:
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
         self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=1e-3)
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.99)
-        self.replace_steps_cycle = 50  # 定义替换目标网络参数的周期步数
+        self.replace_steps_cycle = 20  # 定义替换目标网络参数的周期步数
         self.episilon = 0.98  # 定义ε贪婪策略中的ε值
         self.gamma = 0.998  # 定义强化学习中的折扣因子，用于调节当前奖励和未来奖励的重要性
         self.save_cycyle = 10  # 定义保存模型的周期步数
@@ -55,16 +55,16 @@ class DQNAgent:
         
     def update_episilon(self):
         # 用于ε贪婪策略，用于在探索和利用之间进行权衡 更新episilon 反指数
-        if self.episode < 500:
+        if self.episode < 200:
             self.episilon = 0.98
-        elif self.episode < 900:
+        elif self.episode < 400:
             self.episilon = 0.89
-        elif self.episode < 1200:
+        elif self.episode < 700:
             self.episilon = 0.74
-        elif self.episode < 1400:
+        elif self.episode < 900:
             self.episilon = 0.59
         else:
-            self.episilon *= 0.001
+            self.episilon -= self.episilon*0.0001
         
     def save_model(self, itr):  # 保存q估值网络
         if not os.path.exists(f'./model/{self.datetime}'):
@@ -154,7 +154,7 @@ class DQNAgent:
             self.update_episilon()
 
             # 每20个episode进行一次训练
-            if i>500 and i % self.replace_steps_cycle == 0:
+            if i>300 and i % self.replace_steps_cycle == 0:
                 mean_loss = 0
                 for update_step in range(self.n_steps_update):  # 用于每轮训练的核心部分
                     records = self.replay_buffer.sample(self.batch_size)  # 从经验回放缓冲区中随机抽样一批经验数据，大小为batch_size
@@ -180,7 +180,8 @@ class DQNAgent:
                         target = r+self.gamma*target_q_value.gather(-1, max_action_id)*(~isterminated)  # 根据即时奖励和下个状态下做出最优动作后的q值得到的目标q值 batch_size x 1
 
                     # dqn的拟合q值的损失函数 目标值减去q估计值的平方取平均值来确定loss函数
-                    loss = torch.mean((target.detach()-q_value)**2)
+                    # loss = torch.mean((target.detach()-q_value)**2)
+                    loss = torch.mean(F.mse_loss(target.detach(), q_value))
 
                     self.optimizer.zero_grad()
                     loss.backward()  # 反向传播，计算梯度
