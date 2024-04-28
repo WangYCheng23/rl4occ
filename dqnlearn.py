@@ -54,17 +54,7 @@ class DQNAgent:
         self.log = SummaryWriter(f'./logs/{self.datetime}')
         
     def update_episilon(self):
-        # 用于ε贪婪策略，用于在探索和利用之间进行权衡 更新episilon 反指数
-        if self.episode < 200:
-            self.episilon = 0.98
-        elif self.episode < 400:
-            self.episilon = 0.89
-        elif self.episode < 700:
-            self.episilon = 0.74
-        elif self.episode < 900:
-            self.episilon = 0.59
-        else:
-            self.episilon -= self.episilon*0.0001
+        self.episilon -= self.episilon*0.0005
         
     def save_model(self, itr):  # 保存q估值网络
         if not os.path.exists(f'./model/{self.datetime}'):
@@ -154,7 +144,7 @@ class DQNAgent:
             self.update_episilon()
 
             # 每20个episode进行一次训练
-            if i>300 and i % self.replace_steps_cycle == 0:
+            if i % self.replace_steps_cycle == 0:
                 mean_loss = 0
                 for update_step in range(self.n_steps_update):  # 用于每轮训练的核心部分
                     records = self.replay_buffer.sample(self.batch_size)  # 从经验回放缓冲区中随机抽样一批经验数据，大小为batch_size

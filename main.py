@@ -1,11 +1,11 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-20 01:46:06
-LastEditTime: 2024-04-25 12:21:20
+LastEditTime: 2024-04-26 10:10:47
 '''
 import os
 import sys
-
+import numpy as np
 from env import Env
 from dqnlearn import DQNAgent
 
@@ -18,7 +18,7 @@ elif sys.platform == 'win32':
     pickle_dir = f'D:\\Document\\work\\rl4occ\\pickle_data'
     
 step_filenames = [os.path.join(train_dir, path) for path in os.listdir(train_dir)]
-pickle_dataset = [os.path.join(pickle_dir, pickle_path) for pickle_path in os.listdir(pickle_dir)]
+pickle_dataset = np.random.permutation([os.path.join(pickle_dir, pickle_path) for pickle_path in os.listdir(pickle_dir)])[:500]
 env = Env(step_filenames, pickle_dataset)
 buffer_size = 5000  # 定义了经验回放缓冲区的大小
 dqn_agent = DQNAgent(env, buffer_size)
