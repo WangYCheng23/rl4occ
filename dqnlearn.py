@@ -22,9 +22,9 @@ class DQNAgent:
         # Q-net 超参数
         self.input_dim = 10
         self.output_dim = 1
-        self.hidden_dim = 512
-        self.embed_dim = 256
-        self.num_heads = 16
+        self.hidden_dim = 64
+        self.embed_dim = 16
+        self.num_heads = 4
         
         self.eval_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的估计网络
         self.target_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的目标网络
@@ -38,7 +38,7 @@ class DQNAgent:
         self.replay_buffer = ReplayBuffer(buffer_size)
         
         # 训练超参数
-        self.n_steps_update = 10  # 定义每次训练时使用的步数
+        self.n_steps_update = 5  # 定义每次训练时使用的步数
         self.batch_size = 64  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
         self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=3e-5)
@@ -69,13 +69,6 @@ class DQNAgent:
 
         # 根据ε-greedy策略来选择动作，当随机数小于ε时，以一定概率选择随机动作
         if np.random.uniform(0, 1) < self.episilon:
-
-            # maxactionid = len(self.env.stepedparts)  # 获取已经执行的动作数量，用于限制后续动作的选择
-            # p = np.ones([self.n_actions])  # 初始化动作概率数组，所有动作的概率都设为1
-            # if maxactionid+1 < self.n_actions:  # 如果已执行的动作数量加1小于总动作数量，说明还有未执行的动作
-            #     p[maxactionid+1:] = 1 / (self.n_actions-maxactionid-1)  # 将未执行的动作的概率设为均匀分布
-
-            # p = p/np.sum(p)  # 将概率归一化，确保概率之和为1
 
             action = int(np.random.choice(self.env.unstepparts))  # 根据概率分布选择动作
 

@@ -2,5 +2,5 @@ gym==0.26.2
 matplotlib==3.8.3
 numpy==1.26.4
 OCC==0.0.2.dev20190912195130
-torch==2.2.2
+torch==2.3.0
 tqdm==4.66.2
