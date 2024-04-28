@@ -80,7 +80,8 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         print("---环境重置，随机选择新的装配体---")
         # step_filename = random.choice(self.step_filenames)
         pickle_data = random.choice(self.pickle_dataset)
-        self.assembly = pickle.load(open(pickle_data, 'rb'))
+        with open(pickle_data, 'rb') as f:
+            self.assembly = pickle.load(f)
         
         # self.assembly = OCCAssembly(step_filename)  # 读取模型文件
         # self.step_filename = step_filename
@@ -143,7 +144,9 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
 
         return self.get_state(), reward, isterminated
     
-
+    def close(self):
+        del self.assembly
+    
 if __name__ == '__main__':
     if sys.platform == 'linux':
         train_dir = '/home/WangC/Work/rl4occ/data/train/'
