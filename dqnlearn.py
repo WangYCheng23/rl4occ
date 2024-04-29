@@ -12,6 +12,8 @@ from replay_buffer import ReplayBuffer
 from attention_q_net import MultiHeadAttention, AttentionQNet
 from utils import pad_sequences_and_create_mask
 
+from memory_profiler import profile
+
 class DQNAgent:
 
     def __init__(self, env, buffer_size):  # 定义环境对象和经验回放缓冲区的大小
@@ -87,6 +89,7 @@ class DQNAgent:
 
         return action  # 返回选择的动作
 
+    @profile
     def learn(self, episode_nums):
         accrewards = []  # 创建一个空列表 accrewards，用于存储每轮训练的累积奖励
         rewards_per_steps = []  # 创建一个空列表 rewards_per_steps，用于存储每轮训练的奖励/步数
@@ -122,7 +125,7 @@ class DQNAgent:
                 
                 # 将当前状态和动作添加到经验回放缓冲区中    
                 self.replay_buffer.add_experience(state, action, reward, next_state, isterminated)
-                
+            self.env.close()
             print('episode:', i, ' accreward:', accreward, 'reward_per_step:', accreward/(count+1e-6))
             self.log.add_scalar('exploration_rate', self.episilon, i)
             self.log.add_scalar('reward_per_episode', accreward/(count+1e-6), i)
@@ -142,15 +145,15 @@ class DQNAgent:
                 for update_step in range(self.n_steps_update):  # 用于每轮训练的核心部分
                     records = self.replay_buffer.sample(self.batch_size)  # 从经验回放缓冲区中随机抽样一批经验数据，大小为batch_size
 
-                    r = torch.FloatTensor(np.array(records['rewards'])).unsqueeze(-1).to(self.device)  # batch_size x seq_len
-                    state, state_mask = pad_sequences_and_create_mask(records['states']) # batch_size x seq_len
+                    r = torch.FloatTensor(np.array(records['reward'])).unsqueeze(-1).to(self.device)  # batch_size x seq_len
+                    state, state_mask = pad_sequences_and_create_mask(records['state']) # batch_size x seq_len
                     state = state.to(self.device)
                     state_mask = state_mask.to(self.device)
-                    next_state, next_state_mask = pad_sequences_and_create_mask(records['next_states']) # batch_size x seq_len
+                    next_state, next_state_mask = pad_sequences_and_create_mask(records['next_state']) # batch_size x seq_len
                     next_state = next_state.to(self.device) 
                     next_state_mask = next_state_mask.to(self.device)
-                    actions = torch.LongTensor(np.array(records['actions'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
-                    isterminated = torch.BoolTensor(np.array(records['terminals'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
+                    actions = torch.LongTensor(np.array(records['action'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
+                    isterminated = torch.BoolTensor(np.array(records['terminal'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
                     
                     q_value = self.eval_q_net(state, state_mask)  # batch_size x seq_len
                     q_value = q_value.gather(-1, actions)  # 根据当前状态和动作获取的q值                     
