@@ -46,7 +46,7 @@ class DQNAgent:
         self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=3e-5)
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.99)
         self.replace_steps_cycle = 20  # 定义替换目标网络参数的周期步数
-        self.episilon = 0.98  # 定义ε贪婪策略中的ε值
+        self.init_episilon = 0.98  # 定义ε贪婪策略中的ε值
         self.gamma = 0.998  # 定义强化学习中的折扣因子，用于调节当前奖励和未来奖励的重要性
         self.save_cycyle = 10  # 定义保存模型的周期步数
 
@@ -55,8 +55,9 @@ class DQNAgent:
         self.datetime = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         self.log = SummaryWriter(f'./logs/{self.datetime}')
         
-    def update_episilon(self):
-        self.episilon -= self.episilon*0.0005
+    def update_episilon(self, step):
+        epsilon = self.init_episilon * (0.98 ** step)
+        return epsilon
         
     def save_model(self, itr):  # 保存q估值网络
         if not os.path.exists(f'./model/{self.datetime}'):
@@ -182,7 +183,7 @@ class DQNAgent:
             # # 把采样出来的经验存储到replay_buffer缓存（经验回访缓冲区）
             # self.replay_buffer.store_records(records)
             # episilon每一轮都要减少一个小数值，在每一轮训练中逐渐减小 ε（epsilon）值，即探索率。ε是在DQN中用于控制探索和利用之间的平衡的重要参数。通过逐渐减小 ε，模型在训练的早期会更多地进行探索，随着训练的进行，模型会更多地利用已经学到的知识。
-            self.update_episilon()
+            self.update_episilon(i)
 
             # 每20个episode进行一次训练
             if i % self.replace_steps_cycle == 0:
