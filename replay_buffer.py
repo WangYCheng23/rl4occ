@@ -19,7 +19,6 @@ class ReplayBuffer:
             ('terminal', bool)
         ])
 
-    @profile
     def add_experience(self, state, action, reward, next_state, terminal):
         self.buffer[self.current_idx] = (state, action, reward, next_state, terminal)
         self.current_idx = (self.current_idx + 1) % self.capacity
