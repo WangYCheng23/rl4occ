@@ -142,15 +142,15 @@ class DQNAgent:
                 for update_step in range(self.n_steps_update):  # 用于每轮训练的核心部分
                     records = self.replay_buffer.sample(self.batch_size)  # 从经验回放缓冲区中随机抽样一批经验数据，大小为batch_size
 
-                    r = torch.FloatTensor(np.array(records['rewards'])).unsqueeze(-1).to(self.device)  # batch_size x seq_len
-                    state, state_mask = pad_sequences_and_create_mask(records['states']) # batch_size x seq_len
+                    r = torch.FloatTensor(np.array(records['reward'])).unsqueeze(-1).to(self.device)  # batch_size x seq_len
+                    state, state_mask = pad_sequences_and_create_mask(records['state']) # batch_size x seq_len
                     state = state.to(self.device)
                     state_mask = state_mask.to(self.device)
-                    next_state, next_state_mask = pad_sequences_and_create_mask(records['next_states']) # batch_size x seq_len
+                    next_state, next_state_mask = pad_sequences_and_create_mask(records['next_state']) # batch_size x seq_len
                     next_state = next_state.to(self.device) 
                     next_state_mask = next_state_mask.to(self.device)
-                    actions = torch.LongTensor(np.array(records['actions'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
-                    isterminated = torch.BoolTensor(np.array(records['terminals'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
+                    actions = torch.LongTensor(np.array(records['action'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
+                    isterminated = torch.BoolTensor(np.array(records['terminal'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
                     
                     q_value = self.eval_q_net(state, state_mask)  # batch_size x seq_len
                     q_value = q_value.gather(-1, actions)  # 根据当前状态和动作获取的q值                     
