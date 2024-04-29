@@ -125,6 +125,11 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         print(f"---执行动作, 选取零件{action}---")
         if action>=self.part_num:
             raise ValueError(f"action {action} out of range {self.part_num}")
+        if action in self.stepedparts:
+            raise ValueError(f"action {action} already steped")
+        if action not in self.unstepparts:
+            raise ValueError(f"action {action} not in unstepparts {self.unstepparts}")
+        # if action < len(self.unstepparts):
         
         f1 = self.comp_fit(self.stepedparts)
 

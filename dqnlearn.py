@@ -44,7 +44,7 @@ class DQNAgent:
         self.n_steps_update = 2  # 定义每次训练时使用的步数
         self.batch_size = 64  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
-        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=1e-3)
+        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=3e-5)
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.99)
         self.replace_steps_cycle = 50  # 定义替换目标网络参数的周期步数
         
@@ -60,7 +60,7 @@ class DQNAgent:
         self.log = SummaryWriter(f'./logs/{self.datetime}')
         
     def update_episilon(self, step):
-        return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 500)
+        return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 1000)
         
     def save_model(self, itr):  # 保存q估值网络
         if not os.path.exists(f'./model/{self.datetime}'):
@@ -160,6 +160,7 @@ class DQNAgent:
                 state = self.env.get_state()  # 获取环境特征向量
 
                 action = self.choose_action(state)  # 采样出动作，
+                # self.log.add_scalar('action', action, i)
 
                 next_state, reward, isterminated = self.env.step(action)  # 根据当前状态和动作，获取即时奖励和是否终止信息
 
