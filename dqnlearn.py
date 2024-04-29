@@ -42,11 +42,11 @@ class DQNAgent:
         
         # 训练超参数
         self.n_steps_update = 2  # 定义每次训练时使用的步数
-        self.batch_size = 64  # 定义每次训练时的批量大小
+        self.batch_size = 128  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
         self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=3e-5)
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer , T_max=150, eta_min=0)
-        self.replace_steps_cycle = 50  # 定义替换目标网络参数的周期步数
+        self.replace_steps_cycle = 200  # 定义替换目标网络参数的周期步数
         
         self.init_episilon = 0.98  
         self.final_episilon = 0.04
@@ -60,7 +60,7 @@ class DQNAgent:
         self.log = SummaryWriter(f'./logs/{self.datetime}')
         
     def update_episilon(self, step):
-        return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 1000)
+        return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 10000)
         
     def save_model(self, itr):  # 保存q估值网络
         if not os.path.exists(f'./model/{self.datetime}'):
@@ -131,7 +131,7 @@ class DQNAgent:
             # step_ = step_+1  # 更新步数计数器
             print(f"episode{i}-{update_step}:{loss}")
             mean_loss += loss.item()/self.n_steps_update
-        self.log.add_scalar('loss', mean_loss, i)
+        self.log.add_scalar('training/loss', mean_loss, i)
             # if step_ % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
 
         self.target_q_net.load_state_dict(self.eval_q_net.state_dict())  # 更新目标Q网络的参数
@@ -177,10 +177,10 @@ class DQNAgent:
                 self.replay_buffer.add_experience(state, action, reward, next_state, isterminated)
 
             print('episode:', i, ' accreward:', accreward, 'reward_per_step:', accreward/(count+1e-6))
-            self.log.add_scalar('exploration_rate', self.episilon, i)
-            self.log.add_scalar('reward_per_episode', accreward/(count+1e-6), i)
+            self.log.add_scalar('training/exploration_rate', self.episilon, i)
+            self.log.add_scalar('training/reward_per_episode', accreward/(count+1e-6), i)
             self.log.add_scalar('experience_replay_buffer_size', len(self.replay_buffer), i)
-            self.log.add_scalar('buffer_mb', self.replay_buffer.size(), i)
+            # self.log.add_scalar('buffer_mb', self.replay_buffer.size(), i)
             accrewards.append(accreward)
             rewards_per_steps.append(accreward/(count+1e-6))
             # 将记录的经验数据转换为 NumPy 数组格式，以便存储到经验回放缓冲区中
