@@ -12,6 +12,8 @@ from replay_buffer import ReplayBuffer
 from attention_q_net import MultiHeadAttention, AttentionQNet
 from utils import pad_sequences_and_create_mask
 
+from memory_profiler import profile
+
 class DQNAgent:
 
     def __init__(self, env, buffer_size):  # 定义环境对象和经验回放缓冲区的大小
@@ -87,6 +89,7 @@ class DQNAgent:
 
         return action  # 返回选择的动作
 
+    @profile
     def learn(self, episode_nums):
         accrewards = []  # 创建一个空列表 accrewards，用于存储每轮训练的累积奖励
         rewards_per_steps = []  # 创建一个空列表 rewards_per_steps，用于存储每轮训练的奖励/步数

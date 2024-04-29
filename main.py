@@ -1,13 +1,14 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-20 01:46:06
-LastEditTime: 2024-04-29 17:27:58
+LastEditTime: 2024-04-29 17:32:13
 '''
 import os
 import sys
 import numpy as np
 from env import Env
 from dqnlearn import DQNAgent
+from memory_profiler import profile
 
 cwd = os.getcwd()
 
