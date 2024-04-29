@@ -122,7 +122,7 @@ class DQNAgent:
                 
                 # 将当前状态和动作添加到经验回放缓冲区中    
                 self.replay_buffer.add_experience(state, action, reward, next_state, isterminated)
-                
+            self.env.close()
             print('episode:', i, ' accreward:', accreward, 'reward_per_step:', accreward/(count+1e-6))
             self.log.add_scalar('exploration_rate', self.episilon, i)
             self.log.add_scalar('reward_per_episode', accreward/(count+1e-6), i)
