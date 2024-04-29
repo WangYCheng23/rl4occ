@@ -1,10 +1,11 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-20 01:46:06
-LastEditTime: 2024-04-29 23:06:49
+LastEditTime: 2024-04-30 00:56:26
 
 '''
 import os
+import pickle
 import sys
 import numpy as np
 from env import Env
@@ -21,7 +22,8 @@ elif sys.platform == 'win32':
     pickle_dir = f'D:\\Document\\work\\rl4occ\\pickle_data'
     
 step_filenames = [os.path.join(train_dir, path) for path in os.listdir(train_dir)]
-pickle_dataset = np.random.permutation([os.path.join(pickle_dir, pickle_path) for pickle_path in os.listdir(pickle_dir)])
+# pickle_dataset = np.random.permutation([os.path.join(pickle_dir, pickle_path) for pickle_path in os.listdir(pickle_dir)])
+pickle_dataset = [pickle.load(open(os.path.join(pickle_dir, pickle_path),'rb')) for pickle_path in os.listdir(pickle_dir)]
 env = Env(step_filenames, pickle_dataset)
 buffer_size = 5000  # 定义了经验回放缓冲区的大小
 dqn_agent = DQNAgent(env, buffer_size)
@@ -45,7 +47,7 @@ if test:
     next_state, reward, isterminated = env.step(action)
     print(f"下一个状态:{next_state}\n即时奖励:{reward}\n是否终止:{isterminated}")
 
-episode_nums = 2000  # 定义了训练的总回合数
+episode_nums = 5000  # 定义了训练的总回合数
 
 dqn_agent.learn(episode_nums)
 dqn_agent.log.close()  # 保存训练好的模型
