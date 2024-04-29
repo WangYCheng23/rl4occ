@@ -7,7 +7,7 @@ from typing import List, Dict
 import gym
 import numpy as np
 from assembly import OCCAssembly
-
+from memory_profiler import profile
 
 class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
 
@@ -113,7 +113,6 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         
         return self.get_state()
         
-
     def step(self, action: int):
         """_summary_
 

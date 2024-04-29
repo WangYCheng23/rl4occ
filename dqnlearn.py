@@ -130,6 +130,7 @@ class DQNAgent:
             self.log.add_scalar('exploration_rate', self.episilon, i)
             self.log.add_scalar('reward_per_episode', accreward/(count+1e-6), i)
             self.log.add_scalar('experience_replay_buffer_size', len(self.replay_buffer), i)
+            self.log.add_scalar('buffer_mb', self.replay_buffer.size(), i)
             accrewards.append(accreward)
             rewards_per_steps.append(accreward/(count+1e-6))
             # 将记录的经验数据转换为 NumPy 数组格式，以便存储到经验回放缓冲区中

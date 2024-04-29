@@ -1,8 +1,9 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-15 23:30:56
-LastEditTime: 2024-04-29 17:27:13
+LastEditTime: 2024-04-29 22:42:05
 '''
+import sys
 import numpy as np
 from memory_profiler import profile
 
@@ -19,6 +20,7 @@ class ReplayBuffer:
             ('terminal', bool)
         ])
 
+    @profile(precision=4, stream=open("memory_profiler.log", "w+"))
     def add_experience(self, state, action, reward, next_state, terminal):
         self.buffer[self.current_idx] = (state, action, reward, next_state, terminal)
         self.current_idx = (self.current_idx + 1) % self.capacity
@@ -31,14 +33,19 @@ class ReplayBuffer:
     def sample(self, batch_size):
         if not self.is_full:
             batch_size = min(batch_size, self.current_idx)
-        idxs = np.random.choice(self.current_idx, size=batch_size, replace=False)
+            idxs = np.random.choice(self.current_idx, size=batch_size, replace=False)
+        else:
+            idxs = np.random.choice(self.capacity, size=batch_size, replace=False)
         return self.buffer[idxs]
 
     def shuffle_buffer(self):
         np.random.shuffle(self.buffer[:self.current_idx])
 
+    def size(self):
+        return sys.getsizeof(self.buffer)
+    
     def __len__(self):
-        return self.current_idx
+        return self.current_idx if not self.is_full else self.capacity
 
     def __getitem__(self, idx):
         assert self.is_full or (idx < self.current_idx), "Index out of bounds"
