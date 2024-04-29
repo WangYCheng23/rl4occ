@@ -19,28 +19,34 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
 
     def get_state(self):  # 将装配体的状态转换成一个适合神经网络处理的向量形式
         """状态空间"""
-        # part_num*10
-        unsteppartstate = [self.assembly.boom_transform[id].direction+\
-                           [self.assembly.bboxes[id].CornerMin().X(), 
-                            self.assembly.bboxes[id].CornerMax().X(), 
-                            self.assembly.bboxes[id].CornerMin().Y(), 
-                            self.assembly.bboxes[id].CornerMax().Y(),
-                            self.assembly.bboxes[id].CornerMin().Z(), 
-                            self.assembly.bboxes[id].CornerMax().Z()]+\
-                            [1]    for id in self.unstepparts]  # 获取每个未装配好零件的装配方向向量以及包裹立方体的顶点的坐标的最大最小值
+        # part_num*11
+        unsteppartstate = [
+            self.assembly.boom_transform[id].direction+\
+            [self.assembly.bboxes[id].CornerMin().X(), 
+            self.assembly.bboxes[id].CornerMax().X(), 
+            self.assembly.bboxes[id].CornerMin().Y(), 
+            self.assembly.bboxes[id].CornerMax().Y(),
+            self.assembly.bboxes[id].CornerMin().Z(), 
+            self.assembly.bboxes[id].CornerMax().Z()]+\
+            [-0.5]+\
+            [id]    
+            for id in self.unstepparts]  # 获取每个未装配好零件的装配方向向量以及包裹立方体的顶点的坐标的最大最小值
 
-        stepedpartstate = [self.assembly.boom_transform[id].direction+\
-                           [self.assembly.bboxes[id].CornerMin().X(), 
-                            self.assembly.bboxes[id].CornerMax().X(), 
-                            self.assembly.bboxes[id].CornerMin().Y(), 
-                            self.assembly.bboxes[id].CornerMax().Y(),
-                            self.assembly.bboxes[id].CornerMin().Z(), 
-                            self.assembly.bboxes[id].CornerMax().Z()]+\
-                            [-1]    for id in self.stepedparts]
+        stepedpartstate = [
+            self.assembly.boom_transform[id].direction+\
+            [self.assembly.bboxes[id].CornerMin().X(), 
+            self.assembly.bboxes[id].CornerMax().X(), 
+            self.assembly.bboxes[id].CornerMin().Y(), 
+            self.assembly.bboxes[id].CornerMax().Y(),
+            self.assembly.bboxes[id].CornerMin().Z(), 
+            self.assembly.bboxes[id].CornerMax().Z()]+\
+            [0.5]+\
+            [id]    
+            for id in self.stepedparts]
 
         # unsteppartstate = unsteppartstate+[[0]*9]*(self.part_num-len(unsteppartstate))
         # stepedpartstate = stepedpartstate+[[0]*9]*(self.part_num-len(stepedpartstate))
-        state = unsteppartstate+stepedpartstate # 和part_num*10的维度保持一致
+        state = stepedpartstate+unsteppartstate# 和part_num*10的维度保持一致
         state = np.array(state)
         # state[:, 0] = state[:, 0]/self.maxabsx
         # state[:, 1] = state[:, 1]/self.maxabsy

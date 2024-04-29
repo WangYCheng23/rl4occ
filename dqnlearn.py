@@ -23,11 +23,11 @@ class DQNAgent:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 定义设备类型，如果GPU可用则使用GPU，否则使用CPU
         
         # Q-net 超参数
-        self.input_dim = 10
+        self.input_dim = 11
         self.output_dim = 1
-        self.hidden_dim = 64
-        self.embed_dim = 16
-        self.num_heads = 4
+        self.hidden_dim = 256
+        self.embed_dim = 256
+        self.num_heads = 16
         
         self.eval_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的估计网络
         self.target_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的目标网络
@@ -45,7 +45,7 @@ class DQNAgent:
         self.batch_size = 64  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
         self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=3e-5)
-        # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.99)
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer , T_max=150, eta_min=0)
         self.replace_steps_cycle = 50  # 定义替换目标网络参数的周期步数
         
         self.init_episilon = 0.98  
