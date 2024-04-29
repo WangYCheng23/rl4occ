@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-15 23:30:56
-LastEditTime: 2024-04-29 22:42:05
+LastEditTime: 2024-04-29 22:53:45
 '''
 import sys
 import numpy as np
@@ -20,7 +20,7 @@ class ReplayBuffer:
             ('terminal', bool)
         ])
 
-    @profile(precision=4, stream=open("memory_profiler.log", "w+"))
+    # @profile(precision=4, stream=open("memory_profiler.log", "w+"))
     def add_experience(self, state, action, reward, next_state, terminal):
         self.buffer[self.current_idx] = (state, action, reward, next_state, terminal)
         self.current_idx = (self.current_idx + 1) % self.capacity
