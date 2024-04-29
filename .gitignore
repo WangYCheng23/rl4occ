@@ -7,3 +7,5 @@ __pycache__
 /model/
 !requirements.txt
 /.vscode
+*.log
+*.dat

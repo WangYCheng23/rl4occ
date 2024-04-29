@@ -1,6 +1,7 @@
 
 import copy
 import datetime
+import math
 import os
 import numpy as np
 import torch
@@ -43,10 +44,13 @@ class DQNAgent:
         self.n_steps_update = 2  # 定义每次训练时使用的步数
         self.batch_size = 64  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
-        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=1e-5)
+        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=1e-3)
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.99)
         self.replace_steps_cycle = 50  # 定义替换目标网络参数的周期步数
-        self.init_episilon = 0.98  # 定义ε贪婪策略中的ε值
+        
+        self.init_episilon = 0.98  
+        self.final_episilon = 0.04
+        
         self.gamma = 0.998  # 定义强化学习中的折扣因子，用于调节当前奖励和未来奖励的重要性
         self.save_cycyle = 10  # 定义保存模型的周期步数
 
@@ -56,7 +60,7 @@ class DQNAgent:
         self.log = SummaryWriter(f'./logs/{self.datetime}')
         
     def update_episilon(self, step):
-        self.episilon = max(0.05, self.init_episilon - step*0.001)
+        return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 500)
         
     def save_model(self, itr):  # 保存q估值网络
         if not os.path.exists(f'./model/{self.datetime}'):
@@ -140,7 +144,7 @@ class DQNAgent:
 
         # self.step = 0  # 初始化步数计数器 step_ 为0
         for i in range(episode_nums):  # 循环执行训练指定次数 episode_nums
-            self.update_episilon(i)
+            self.episilon = self.update_episilon(i)
             self.episode += 1  # 更新轮数计数器
             # records = {'state': [], 'next_state': [], 'actions': [], 'r': [
             # ], 'isterminated': []}  # 创建一个字典 records，用于存储每个 episode 中的经验数据
