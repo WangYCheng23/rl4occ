@@ -40,12 +40,12 @@ class DQNAgent:
         self.replay_buffer = ReplayBuffer(buffer_size)
         
         # 训练超参数
-        self.n_steps_update = 5  # 定义每次训练时使用的步数
+        self.n_steps_update = 2  # 定义每次训练时使用的步数
         self.batch_size = 64  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
-        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=3e-5)
+        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=1e-5)
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.99)
-        self.replace_steps_cycle = 20  # 定义替换目标网络参数的周期步数
+        self.replace_steps_cycle = 50  # 定义替换目标网络参数的周期步数
         self.init_episilon = 0.98  # 定义ε贪婪策略中的ε值
         self.gamma = 0.998  # 定义强化学习中的折扣因子，用于调节当前奖励和未来奖励的重要性
         self.save_cycyle = 10  # 定义保存模型的周期步数
@@ -56,8 +56,7 @@ class DQNAgent:
         self.log = SummaryWriter(f'./logs/{self.datetime}')
         
     def update_episilon(self, step):
-        epsilon = self.init_episilon * (0.98 ** step)
-        return epsilon
+        self.episilon = max(0.05, self.init_episilon - step*0.001)
         
     def save_model(self, itr):  # 保存q估值网络
         if not os.path.exists(f'./model/{self.datetime}'):
@@ -68,7 +67,7 @@ class DQNAgent:
     def load_model(self):  # 加载深度Q学习算法中的Q值估计网络（q_net）便于继续训练和预测
         self.eval_q_net = torch.load('./model/best_eval_q_net.pth')
 
-    @profile(precision=4, stream=open("memory_profiler.log", "w+"))
+    # @profile(precision=4, stream=open("memory_profiler.log", "w+"))
     def choose_action(self, state):  # 在给定状态下选择动作的过程
 
         # 根据ε-greedy策略来选择动作，当随机数小于ε时，以一定概率选择随机动作
@@ -91,7 +90,7 @@ class DQNAgent:
 
         return action  # 返回选择的动作
     
-    @profile(precision=4, stream=open("memory_profiler.log", "w+"))
+    # @profile(precision=4, stream=open("memory_profiler.log", "w+"))
     def update(self, i):
         mean_loss = 0
         for update_step in range(self.n_steps_update):  # 用于每轮训练的核心部分
@@ -119,7 +118,7 @@ class DQNAgent:
 
             # dqn的拟合q值的损失函数 目标值减去q估计值的平方取平均值来确定loss函数
             # loss = torch.mean((target.detach()-q_value)**2)
-            loss = torch.mean(F.mse_loss(target.detach(), q_value))
+            loss = torch.mean(F.mse_loss(q_value, target.detach()))
 
             self.optimizer.zero_grad()
             loss.backward()  # 反向传播，计算梯度
@@ -141,6 +140,7 @@ class DQNAgent:
 
         # self.step = 0  # 初始化步数计数器 step_ 为0
         for i in range(episode_nums):  # 循环执行训练指定次数 episode_nums
+            self.update_episilon(i)
             self.episode += 1  # 更新轮数计数器
             # records = {'state': [], 'next_state': [], 'actions': [], 'r': [
             # ], 'isterminated': []}  # 创建一个字典 records，用于存储每个 episode 中的经验数据
@@ -170,7 +170,7 @@ class DQNAgent:
                 
                 # 将当前状态和动作添加到经验回放缓冲区中    
                 self.replay_buffer.add_experience(state, action, reward, next_state, isterminated)
-            self.env.close()
+
             print('episode:', i, ' accreward:', accreward, 'reward_per_step:', accreward/(count+1e-6))
             self.log.add_scalar('exploration_rate', self.episilon, i)
             self.log.add_scalar('reward_per_episode', accreward/(count+1e-6), i)
@@ -183,7 +183,6 @@ class DQNAgent:
             # # 把采样出来的经验存储到replay_buffer缓存（经验回访缓冲区）
             # self.replay_buffer.store_records(records)
             # episilon每一轮都要减少一个小数值，在每一轮训练中逐渐减小 ε（epsilon）值，即探索率。ε是在DQN中用于控制探索和利用之间的平衡的重要参数。通过逐渐减小 ε，模型在训练的早期会更多地进行探索，随着训练的进行，模型会更多地利用已经学到的知识。
-            self.update_episilon(i)
 
             # 每20个episode进行一次训练
             if i % self.replace_steps_cycle == 0:

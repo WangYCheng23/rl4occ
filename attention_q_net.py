@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-19 00:44:42
-LastEditTime: 2024-04-24 21:51:36
+LastEditTime: 2024-04-29 23:49:37
 '''
 import torch
 import torch.nn as nn
@@ -40,7 +40,7 @@ class MultiHeadAttention(nn.Module):
         
         # Apply mask (if provided)
         if mask is not None:
-            scores = scores.masked_fill(mask[:,:,0].unsqueeze(1).unsqueeze(1).expand(batch_size, -1, seq_len, seq_len)==False, float('-inf'))
+            scores = scores.masked_fill(mask.unsqueeze(1).unsqueeze(1).expand(batch_size, -1, seq_len, seq_len)==False, float('-inf'))
             # mask = int(~mask[:,:,0].unsqueeze(1).unsqueeze(1))*(float('-inf'))
             # scores = scores*mask
         

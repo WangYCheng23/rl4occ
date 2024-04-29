@@ -144,9 +144,6 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
 
         return self.get_state(), reward, isterminated
     
-    def close(self):
-        del self.assembly
-        gc.collect()
     
 if __name__ == '__main__':
     if sys.platform == 'linux':
