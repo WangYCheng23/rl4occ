@@ -81,7 +81,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
                 # print(dir, pre_direction)
             pre_direction = dir
 
-        return interference_count * 5 + 5 * direction_change_num
+        return interference_count * 50 + 10 * direction_change_num
 
     def reset(self, seed=23):  # 环境重置，
         print("---环境重置，随机选择新的装配体---")

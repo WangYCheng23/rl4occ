@@ -331,8 +331,7 @@ env = Env(step_filename)
 policy_net = torch.load('./model/best_eval_q_net.pth')
 initgene[0, :] = policy_net
 
-Path_short, bestfitnesses = main(
-    step_filename, initgene=initgene)  # 做对加入了dqn初始解的遗传算法对比实验
+Path_short, bestfitnesses = main(step_filename, initgene=initgene)  # 做对加入了dqn初始解的遗传算法对比实验
 
 plt.figure(1)
 
