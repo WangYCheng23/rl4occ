@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-19 00:44:42
-LastEditTime: 2024-04-29 23:49:37
+LastEditTime: 2024-05-06 00:32:15
 '''
 import torch
 import torch.nn as nn
@@ -93,6 +93,30 @@ class AttentionQNet(nn.Module):
         x_fc2 = self.fc2(x_norm2)  # 第二个全连接层
 
         return x_fc2.squeeze(-1)
+    
+class Q_Transformer(nn.Module):
+    """
+    A standard Encoder-Decoder architecture. Base for this and many
+    other models.
+    """
+
+    def __init__(self, encoder, decoder, src_embed, tgt_embed, generator):
+        super(Q_Transformer, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.src_embed = src_embed
+        self.tgt_embed = tgt_embed
+        self.generator = generator
+
+    def forward(self, src, tgt, src_mask, tgt_mask):
+        "Take in and process masked src and target sequences."
+        return self.decode(self.encode(src, src_mask), src_mask, tgt, tgt_mask)
+
+    def encode(self, src, src_mask):
+        return self.encoder(self.src_embed(src), src_mask)
+
+    def decode(self, memory, src_mask, tgt, tgt_mask):
+        return self.decoder(self.tgt_embed(tgt), memory, src_mask, tgt_mask)
 
 if __name__ == "__main__":
     input_dim = 9
