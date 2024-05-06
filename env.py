@@ -19,8 +19,9 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
 
     def get_state(self):  # 将装配体的状态转换成一个适合神经网络处理的向量形式
         """状态空间"""
-        # part_num*11
-        unsteppartstate = [
+        
+        # d_model = 10
+        state_embedding = [
             self.assembly.boom_transform[id].direction+\
             [self.assembly.bboxes[id].CornerMin().X(), 
             self.assembly.bboxes[id].CornerMax().X(), 
@@ -28,36 +29,14 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
             self.assembly.bboxes[id].CornerMax().Y(),
             self.assembly.bboxes[id].CornerMin().Z(), 
             self.assembly.bboxes[id].CornerMax().Z()]+\
-            [-0.5]+\
-            [id]    
-            for id in self.unstepparts]  # 获取每个未装配好零件的装配方向向量以及包裹立方体的顶点的坐标的最大最小值
+            [id]
+            for id in self.allparts
+        ]
+        embedding_mask = [
+            
+        ]
 
-        stepedpartstate = [
-            self.assembly.boom_transform[id].direction+\
-            [self.assembly.bboxes[id].CornerMin().X(), 
-            self.assembly.bboxes[id].CornerMax().X(), 
-            self.assembly.bboxes[id].CornerMin().Y(), 
-            self.assembly.bboxes[id].CornerMax().Y(),
-            self.assembly.bboxes[id].CornerMin().Z(), 
-            self.assembly.bboxes[id].CornerMax().Z()]+\
-            [0.5]+\
-            [id]    
-            for id in self.stepedparts]
-
-        # unsteppartstate = unsteppartstate+[[0]*9]*(self.part_num-len(unsteppartstate))
-        # stepedpartstate = stepedpartstate+[[0]*9]*(self.part_num-len(stepedpartstate))
-        state = stepedpartstate+unsteppartstate# 和part_num*10的维度保持一致
-        state = np.array(state)
-        # state[:, 0] = state[:, 0]/self.maxabsx
-        # state[:, 1] = state[:, 1]/self.maxabsy
-        # state[:, 2] = state[:, 2]/self.maxabsz
-        # state[:, 3:5] = state[:, 3:5]/self.maxabscornnerx  # 外围包裹顶点坐标特征归一化到-1到1之间
-        # state[:, 5:7] = state[:, 5:7]/self.maxabscornnery
-        # # 对状态向量进行归一化处理，将各个特征的值归一化到 [-1, 1] 的范围内，以便神经网络更好地处理。
-        # state[:, 7:9] = state[:, 7:9]/self.maxabscornnerz
-        # # state = np.reshape(state, (-1))  # 将状态向量展开成一维数组，并返回该数组作为当前环境的状态
-        # # state = np.pad(state, (0, self.state_space.shape-len(state)), 'constant', constant_values=0)
-        return state
+        return [state_embedding, embedding_mask]   # for pointer net
 
     def comp_fit(self, one_path):
         """奖励函数"""
@@ -97,6 +76,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         # self.assembly.compute_countij()  # 提前计算每个零件排在在某个其他零件后发生碰撞次数，为了加速?
         # self.n_state = self.part_num*2*9
         # self.n_actions = self.part_num  # 将动作空间的大小设置为零件的数量，表示每个动作是选择一个零件进行装配
+        self.allparts = list(range(self.part_num))  # 所有零件的编号
         self.stepedparts = []  # 已装配的
         self.unstepparts = list(range(self.part_num))   # 未装配的
         self.maxabsx = max([abs(self.assembly.boom_transform[i].direction[0])

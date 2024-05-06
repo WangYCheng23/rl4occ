@@ -11,6 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from env import Env
 from replay_buffer import ReplayBuffer
 from attention_q_net import MultiHeadAttention, AttentionQNet
+from pointer_network import PointerNet
 from utils import pad_sequences_and_create_mask
 
 from memory_profiler import profile
@@ -31,6 +32,7 @@ class DQNAgent:
         
         self.eval_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的估计网络
         self.target_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的目标网络
+        
         # 目标网络和估值网络权重一开始相同，为了在深度 Q 学习算法中稳定训练和提高效率
         # for param in self.eval_q_net.parameters():
         #     if param.requires_grad:  # 确保参数是可训练的
