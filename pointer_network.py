@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-05-06 00:34:16
-LastEditTime: 2024-05-08 01:33:21
+LastEditTime: 2024-05-08 02:05:25
 '''
 import torch
 import torch.nn as nn
@@ -136,10 +136,11 @@ class Attention(nn.Module):
         if len(att[mask]) > 0:
             att[mask] = self.inf[mask]
         alpha = self.softmax(att)
+        # alpha = att
 
         hidden_state = torch.bmm(ctx, alpha.unsqueeze(2)).squeeze(2)
 
-        return hidden_state, alpha
+        return hidden_state, att
 
     def init_inf(self, mask_size):
         self.inf = self._inf.unsqueeze(1).expand(*mask_size)
@@ -173,23 +174,23 @@ class Decoder(nn.Module):
         self.runner = Parameter(torch.zeros(1), requires_grad=False)
 
     def forward(self, 
-                embedded_inputs,
+                encoder_embedded_inputs,
                 decoder_input,
                 hidden,
                 context,
-                n_steps):
+                order_idx):
         """
         Decoder - Forward-pass
 
-        :param Tensor embedded_inputs: Embedded inputs of Pointer-Net
+        :param Tensor encoder_embedded_inputs: Embedded inputs of Pointer-Net
         :param Tensor decoder_input: First decoder's input
         :param Tensor hidden: First decoder's hidden states
         :param Tensor context: Encoder's outputs
         :return: (Output probabilities, Pointers indices), last hidden state
         """
 
-        batch_size = embedded_inputs.size(0)
-        input_length = embedded_inputs.size(1)
+        batch_size = encoder_embedded_inputs.size(0)
+        input_length = encoder_embedded_inputs.size(1)
 
         # (batch, seq_len)
         mask = self.mask.repeat(input_length).unsqueeze(0).repeat(batch_size, 1)
@@ -234,7 +235,7 @@ class Decoder(nn.Module):
             return hidden_t, c_t, output
 
         # Recurrence loop
-        for _ in (n_steps+1):
+        for idx in range(len(order_idx)+1):
             h_t, c_t, outs = step(decoder_input, hidden)
             hidden = (h_t, c_t)
 
@@ -242,7 +243,11 @@ class Decoder(nn.Module):
             masked_outs = outs * mask
 
             # Get maximum probabilities and indices
-            max_probs, indices = masked_outs.max(1)
+            if idx < len(order_idx):
+                indices = order_idx[idx]   
+            else:
+                max_probs, indices = masked_outs.max(1)
+           
             one_hot_pointers = (runner == indices.unsqueeze(1).expand(-1, outs.size()[1])).float()
 
             # Update mask to ignore seen indices
@@ -250,15 +255,16 @@ class Decoder(nn.Module):
 
             # Get embedded inputs by max indices
             embedding_mask = one_hot_pointers.unsqueeze(2).expand(-1, -1, self.embedding_dim).byte()
-            decoder_input = embedded_inputs[embedding_mask.data].view(batch_size, self.embedding_dim)
+            decoder_input = encoder_embedded_inputs[embedding_mask.data].view(batch_size, self.embedding_dim)
+            
+        return (outs, indices), hidden
+        #     outputs.append(outs.unsqueeze(0))
+        #     pointers.append(indices.unsqueeze(1))
 
-            outputs.append(outs.unsqueeze(0))
-            pointers.append(indices.unsqueeze(1))
+        # outputs = torch.cat(outputs).permute(1, 0, 2)
+        # pointers = torch.cat(pointers, 1)
 
-        outputs = torch.cat(outputs).permute(1, 0, 2)
-        pointers = torch.cat(pointers, 1)
-
-        return (outputs, pointers), hidden
+        # return (outputs, pointers), hidden
 
 
 class PointerNet(nn.Module):
@@ -298,30 +304,30 @@ class PointerNet(nn.Module):
         # Initialize decoder_input0
         nn.init.uniform_(self.decoder_input0, -1, 1)
 
-    def forward(self, inputs, decoder_input0):
+    def forward(self, encoder_inputs, decoder_input0):
         """
         PointerNet - Forward-pass
 
-        :param Tensor inputs: Input sequence
+        :param Tensor encoder_inputs: Input sequence
         :return: Pointers probabilities and indices
         """
         # input state: [batch_size, input_length, embedding_dim]
-        batch_size = inputs.size(0)
-        input_length = inputs.size(1)
+        batch_size = encoder_inputs.size(0)
+        input_length = encoder_inputs.size(1)
         
         # for single_decoder_input in decoder_input0:
         # TODO: for batch
-        if not decoder_input0:
+        if decoder_input0 is None:
             decoder_input0 = self.decoder_input0.unsqueeze(0).expand(batch_size, -1)
-            n_steps = 0
+            orders_idx = []
         else:
-            n_steps = len(decoder_input0)
+            orders_idx = decoder_input0[:,:,-1]
 
-        inputs = inputs.view(batch_size * input_length, -1)
-        embedded_inputs = self.embedding(inputs).view(batch_size, input_length, -1)
+        encoder_inputs = encoder_inputs.view(batch_size * input_length, -1)
+        encoder_embedded_inputs = self.embedding(encoder_inputs).view(batch_size, input_length, -1)
 
-        encoder_hidden0 = self.encoder.init_hidden(embedded_inputs)
-        encoder_outputs, encoder_hidden = self.encoder(embedded_inputs,
+        encoder_hidden0 = self.encoder.init_hidden(encoder_embedded_inputs)
+        encoder_outputs, encoder_hidden = self.encoder(encoder_embedded_inputs,
                                                        encoder_hidden0)
         if self.bidir:
             decoder_hidden0 = (torch.cat((encoder_hidden[0][-2], encoder_hidden[0][-1]), dim=-1),
@@ -330,10 +336,10 @@ class PointerNet(nn.Module):
             decoder_hidden0 = (encoder_hidden[0][-1],
                                encoder_hidden[1][-1])
         # 单步
-        (outputs, pointers), decoder_hidden = self.decoder(embedded_inputs,
+        (outputs, pointers), decoder_hidden = self.decoder(encoder_embedded_inputs,
                                                            decoder_input0,
                                                            decoder_hidden0,
                                                            encoder_outputs,
-                                                           n_steps)
+                                                           orders_idx)
 
         return  outputs, pointers

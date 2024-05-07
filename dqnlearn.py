@@ -94,7 +94,7 @@ class DQNAgent:
 
         else: 
             encoder_input = torch.FloatTensor(state[0]).unsqueeze(0).to(self.device)  # 将当前状态转换为PyTorch的张量格式
-            if not state[1]:
+            if state[1].size == 0:
                 decoder_input = None
             else:
                 decoder_input = torch.FloatTensor(state[1]).unsqueeze(0).to(self.device)
@@ -112,6 +112,7 @@ class DQNAgent:
                 # Q_vals = Q_vals.masked_fill_(mask==0, -float('inf')).detach().cpu().numpy()[0, :]  # 将Q值张量转换为NumPy数组，以便后续处理
                 
                 # action = np.argmax(Q_vals)  # 选择具有最大Q值的动作作为最优动作
+                action = int(action.detach().cpu().numpy()[0])
 
         return action  # 返回选择的动作
     
