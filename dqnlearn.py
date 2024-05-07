@@ -23,15 +23,18 @@ class DQNAgent:
         self.env = env  # 定义环境对象
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 定义设备类型，如果GPU可用则使用GPU，否则使用CPU
         
-        # Q-net 超参数
-        self.input_dim = 11
-        self.output_dim = 1
-        self.hidden_dim = 256
-        self.embed_dim = 256
-        self.num_heads = 16
+        # # Q-net 超参数
+        # self.input_dim = 11
+        # self.output_dim = 1
+        # self.hidden_dim = 256
+        # self.embed_dim = 256
+        # self.num_heads = 16
         
-        self.eval_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的估计网络
-        self.target_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的目标网络
+        # self.eval_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的估计网络
+        # self.target_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的目标网络
+        
+        self.eval_q_net = PointerNet(self.env.vocab_size, self.env.vocab_size, self.env.max_seq_len)  # 定义q值的估计网络
+        self.target_q_net = PointerNet(self.env.vocab_size, self.env.vocab_size, self.env.max_seq_len)  # 定义q值的目标网络
         
         # 目标网络和估值网络权重一开始相同，为了在深度 Q 学习算法中稳定训练和提高效率
         # for param in self.eval_q_net.parameters():

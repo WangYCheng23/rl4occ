@@ -21,7 +21,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         """状态空间"""
         
         # d_model = 10
-        state_embedding = [
+        encoder_input_embedding = [
             self.assembly.boom_transform[id].direction+\
             [self.assembly.bboxes[id].CornerMin().X(), 
             self.assembly.bboxes[id].CornerMax().X(), 
@@ -32,11 +32,23 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
             [id]
             for id in self.allparts
         ]
+        
+        decoder_input_embedding = [
+            self.assembly.boom_transform[id].direction+\
+            [self.assembly.bboxes[id].CornerMin().X(), 
+            self.assembly.bboxes[id].CornerMax().X(), 
+            self.assembly.bboxes[id].CornerMin().Y(), 
+            self.assembly.bboxes[id].CornerMax().Y(),
+            self.assembly.bboxes[id].CornerMin().Z(), 
+            self.assembly.bboxes[id].CornerMax().Z()]+\
+            [id]
+            for id in self.stepedparts
+        ]
         embedding_mask = [
-            
+            idx for idx in self.stepedparts
         ]
 
-        return [state_embedding, embedding_mask]   # for pointer net
+        return [encoder_input_embedding, decoder_input_embedding, embedding_mask]   # for pointer net
 
     def comp_fit(self, one_path):
         """奖励函数"""
@@ -135,19 +147,4 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
 
         return self.get_state(), reward, isterminated
     
-    
-if __name__ == '__main__':
-    if sys.platform == 'linux':
-        train_dir = '/home/WangC/Work/rl4occ/data/train/'
-        pickle_dir = '/home/WangC/Work/rl4occ/pickle_data/'
-    elif sys.platform == 'win32':
-        train_dir = f'D:\\Document\\work\\rl4occ\\data\\train'
-        pickle_dir = f'D:\\Document\\work\\rl4occ\\pickle_data'
-    step_filenames = [os.path.join(train_dir, path) for path in os.listdir(train_dir)]
-    pickle_dataset = [os.path.join(pickle_dir, pickle_path) for pickle_path in os.listdir(pickle_dir)]
-    env = Env(step_filenames, pickle_dataset)
-    next_states = env.reset()
-    env.step(1)
-    env.step(3)
-    env.step(5)
-    print('debug!')
+

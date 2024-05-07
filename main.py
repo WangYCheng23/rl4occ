@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-20 01:46:06
-LastEditTime: 2024-04-30 21:19:02
+LastEditTime: 2024-05-07 11:21:10
 
 '''
 import os
@@ -26,8 +26,8 @@ if __name__ == '__main__':
         train_dir = os.path.join(cwd, 'data/train/')
         pickle_dir = os.path.join(cwd, 'pickle_data/')
     elif sys.platform == 'win32':
-        train_dir = f'D:\\Document\\work\\rl4occ\\data\\train'
-        pickle_dir = f'D:\\Document\\work\\rl4occ\\pickle_data'
+        train_dir = os.path.join(cwd, f'data\\train')
+        pickle_dir = os.path.join(cwd, f'pickle_data')
         
     step_filenames = [os.path.join(train_dir, path) for path in os.listdir(train_dir)]
     # pickle_dataset = np.random.permutation([os.path.join(pickle_dir, pickle_path) for pickle_path in os.listdir(pickle_dir)])
