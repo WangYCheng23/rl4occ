@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-15 23:30:56
-LastEditTime: 2024-04-29 22:53:45
+LastEditTime: 2024-05-07 23:45:32
 '''
 import sys
 import numpy as np
@@ -13,10 +13,10 @@ class ReplayBuffer:
         self.current_idx = 0
         self.is_full = False
         self.buffer = np.empty((capacity,), dtype=[
-            ('state', np.ndarray),
+            ('state', list),
             ('action', np.int32),
             ('reward', np.float32),
-            ('next_state', np.ndarray),
+            ('next_state', list),
             ('terminal', bool)
         ])
 

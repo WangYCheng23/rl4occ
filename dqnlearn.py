@@ -33,8 +33,15 @@ class DQNAgent:
         # self.eval_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的估计网络
         # self.target_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的目标网络
         
-        self.eval_q_net = PointerNet(self.env.vocab_size, self.env.vocab_size, self.env.max_seq_len)  # 定义q值的估计网络
-        self.target_q_net = PointerNet(self.env.vocab_size, self.env.vocab_size, self.env.max_seq_len)  # 定义q值的目标网络
+        self.input_dim = 10
+        self.embedding_dim = 128
+        self.hidden_dim = 512
+        self.lstm_layers = 2
+        self.dropout = 0
+        self.bidir = True
+        
+        self.eval_q_net = PointerNet(self.input_dim, self.embedding_dim, self.hidden_dim, self.lstm_layers, self.dropout, self.bidir).to(self.device)  # 定义q值的估计网络
+        self.target_q_net = PointerNet(self.input_dim, self.embedding_dim, self.hidden_dim, self.lstm_layers, self.dropout, self.bidir).to(self.device)  # 定义q值的目标网络
         
         # 目标网络和估值网络权重一开始相同，为了在深度 Q 学习算法中稳定训练和提高效率
         # for param in self.eval_q_net.parameters():
@@ -65,7 +72,8 @@ class DQNAgent:
         self.log = SummaryWriter(f'./logs/{self.datetime}')
         
     def update_episilon(self, step):
-        return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 10000)
+        # return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 10000)
+        return 0
         
     def save_model(self, itr):  # 保存q估值网络
         if not os.path.exists(f'./model/{self.datetime}'):
@@ -85,17 +93,25 @@ class DQNAgent:
             action = int(np.random.choice(self.env.unstepparts))  # 根据概率分布选择动作
 
         else: 
-            state = torch.FloatTensor(state).reshape(1,-1,self.input_dim).to(self.device)  # 将当前状态转换为PyTorch的张量格式
+            encoder_input = torch.FloatTensor(state[0]).unsqueeze(0).to(self.device)  # 将当前状态转换为PyTorch的张量格式
+            if not state[1]:
+                decoder_input = None
+            else:
+                decoder_input = torch.FloatTensor(state[1]).unsqueeze(0).to(self.device)
+            # mask = torch.FloatTensor(state[2]).to(self.device)  # 将掩码转换为PyTorch的张量格式
             self.eval_q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
             with torch.no_grad():
-                Q_vals = self.eval_q_net(state)  # 使用Q网络预测当前状态下各个动作的Q值
-                masked_positions = self.env.stepedparts
+                Q_vals, action = self.eval_q_net(
+                    encoder_input, decoder_input
+                )  # 使用Q网络预测当前状态下各个动作的Q值
+                # masked_positions = self.env.stepedparts
                 # 创建掩码张量
-                mask = torch.ones_like(Q_vals)  # 先创建一个全 1 的张量
-                # 将需要掩盖的位置置零
-                mask[:,masked_positions] = 0
-                Q_vals = Q_vals.masked_fill_(mask==0, -float('inf')).detach().cpu().numpy()[0, :]  # 将Q值张量转换为NumPy数组，以便后续处理
-                action = np.argmax(Q_vals)  # 选择具有最大Q值的动作作为最优动作
+                # mask = torch.ones_like(Q_vals)  # 先创建一个全 1 的张量
+                # # 将需要掩盖的位置置零
+                # mask[:,masked_positions] = 0
+                # Q_vals = Q_vals.masked_fill_(mask==0, -float('inf')).detach().cpu().numpy()[0, :]  # 将Q值张量转换为NumPy数组，以便后续处理
+                
+                # action = np.argmax(Q_vals)  # 选择具有最大Q值的动作作为最优动作
 
         return action  # 返回选择的动作
     
@@ -195,8 +211,8 @@ class DQNAgent:
             # episilon每一轮都要减少一个小数值，在每一轮训练中逐渐减小 ε（epsilon）值，即探索率。ε是在DQN中用于控制探索和利用之间的平衡的重要参数。通过逐渐减小 ε，模型在训练的早期会更多地进行探索，随着训练的进行，模型会更多地利用已经学到的知识。
 
             # 每20个episode进行一次训练
-            if i % self.replace_steps_cycle == 0:
-                self.update(i)
+            # if i % self.replace_steps_cycle == 0:
+            #     self.update(i)
 
     # def save_optimevalue(self):  
 

@@ -21,7 +21,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         """状态空间"""
         
         # d_model = 10
-        encoder_input_embedding = [
+        encoder_inputs = np.array([
             self.assembly.boom_transform[id].direction+\
             [self.assembly.bboxes[id].CornerMin().X(), 
             self.assembly.bboxes[id].CornerMax().X(), 
@@ -31,9 +31,9 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
             self.assembly.bboxes[id].CornerMax().Z()]+\
             [id]
             for id in self.allparts
-        ]
+        ], dtype=np.float32)
         
-        decoder_input_embedding = [
+        decoder_inputs = np.array([
             self.assembly.boom_transform[id].direction+\
             [self.assembly.bboxes[id].CornerMin().X(), 
             self.assembly.bboxes[id].CornerMax().X(), 
@@ -43,12 +43,11 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
             self.assembly.bboxes[id].CornerMax().Z()]+\
             [id]
             for id in self.stepedparts
-        ]
-        embedding_mask = [
-            idx for idx in self.stepedparts
-        ]
+        ], dtype=np.float32)
+        # embedding_mask = np.ones(len(self.allparts))
+        # embedding_mask[self.stepedparts] = 0
 
-        return [encoder_input_embedding, decoder_input_embedding, embedding_mask]   # for pointer net
+        return [encoder_inputs, decoder_inputs]  # for pointer net
 
     def comp_fit(self, one_path):
         """奖励函数"""

@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-05-06 00:34:16
-LastEditTime: 2024-05-06 23:31:20
+LastEditTime: 2024-05-08 01:33:21
 '''
 import torch
 import torch.nn as nn
@@ -107,7 +107,7 @@ class Attention(nn.Module):
         self.softmax = nn.Softmax()
 
         # Initialize vector V
-        nn.init.uniform(self.V, -1, 1)
+        nn.init.uniform_(self.V, -1, 1)
 
     def forward(self, input,
                 context,
@@ -172,10 +172,12 @@ class Decoder(nn.Module):
         self.mask = Parameter(torch.ones(1), requires_grad=False)
         self.runner = Parameter(torch.zeros(1), requires_grad=False)
 
-    def forward(self, embedded_inputs,
+    def forward(self, 
+                embedded_inputs,
                 decoder_input,
                 hidden,
-                context):
+                context,
+                n_steps):
         """
         Decoder - Forward-pass
 
@@ -232,7 +234,7 @@ class Decoder(nn.Module):
             return hidden_t, c_t, output
 
         # Recurrence loop
-        for _ in range(input_length):
+        for _ in (n_steps+1):
             h_t, c_t, outs = step(decoder_input, hidden)
             hidden = (h_t, c_t)
 
@@ -264,7 +266,9 @@ class PointerNet(nn.Module):
     Pointer-Net
     """
 
-    def __init__(self, embedding_dim,
+    def __init__(self,
+                 input_dim, 
+                 embedding_dim,
                  hidden_dim,
                  lstm_layers,
                  dropout,
@@ -282,7 +286,7 @@ class PointerNet(nn.Module):
         super(PointerNet, self).__init__()
         self.embedding_dim = embedding_dim
         self.bidir = bidir
-        self.embedding = nn.Linear(2, embedding_dim)
+        self.embedding = nn.Linear(input_dim, embedding_dim)
         self.encoder = Encoder(embedding_dim,
                                hidden_dim,
                                lstm_layers,
@@ -292,9 +296,9 @@ class PointerNet(nn.Module):
         self.decoder_input0 = Parameter(torch.FloatTensor(embedding_dim), requires_grad=False)
 
         # Initialize decoder_input0
-        nn.init.uniform(self.decoder_input0, -1, 1)
+        nn.init.uniform_(self.decoder_input0, -1, 1)
 
-    def forward(self, inputs):
+    def forward(self, inputs, decoder_input0):
         """
         PointerNet - Forward-pass
 
@@ -304,8 +308,14 @@ class PointerNet(nn.Module):
         # input state: [batch_size, input_length, embedding_dim]
         batch_size = inputs.size(0)
         input_length = inputs.size(1)
-
-        decoder_input0 = self.decoder_input0.unsqueeze(0).expand(batch_size, -1)
+        
+        # for single_decoder_input in decoder_input0:
+        # TODO: for batch
+        if not decoder_input0:
+            decoder_input0 = self.decoder_input0.unsqueeze(0).expand(batch_size, -1)
+            n_steps = 0
+        else:
+            n_steps = len(decoder_input0)
 
         inputs = inputs.view(batch_size * input_length, -1)
         embedded_inputs = self.embedding(inputs).view(batch_size, input_length, -1)
@@ -314,14 +324,16 @@ class PointerNet(nn.Module):
         encoder_outputs, encoder_hidden = self.encoder(embedded_inputs,
                                                        encoder_hidden0)
         if self.bidir:
-            decoder_hidden0 = (torch.cat(encoder_hidden[0][-2:], dim=-1),
-                               torch.cat(encoder_hidden[1][-2:], dim=-1))
+            decoder_hidden0 = (torch.cat((encoder_hidden[0][-2], encoder_hidden[0][-1]), dim=-1),
+                               torch.cat((encoder_hidden[1][-2], encoder_hidden[1][-1]), dim=-1))
         else:
             decoder_hidden0 = (encoder_hidden[0][-1],
                                encoder_hidden[1][-1])
+        # 单步
         (outputs, pointers), decoder_hidden = self.decoder(embedded_inputs,
                                                            decoder_input0,
                                                            decoder_hidden0,
-                                                           encoder_outputs)
+                                                           encoder_outputs,
+                                                           n_steps)
 
         return  outputs, pointers
