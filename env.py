@@ -3,6 +3,7 @@ import os
 import pickle
 import random
 import sys
+import copy
 from typing import List, Dict
 import gym
 import numpy as np
@@ -21,7 +22,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         """状态空间"""
         
         # d_model = 10
-        encoder_inputs = np.array([
+        src_inputs = np.array([
             self.assembly.boom_transform[id].direction+\
             [self.assembly.bboxes[id].CornerMin().X(), 
             self.assembly.bboxes[id].CornerMax().X(), 
@@ -32,22 +33,12 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
             [id]
             for id in self.allparts
         ], dtype=np.float32)
-        
-        decoder_inputs = np.array([
-            self.assembly.boom_transform[id].direction+\
-            [self.assembly.bboxes[id].CornerMin().X(), 
-            self.assembly.bboxes[id].CornerMax().X(), 
-            self.assembly.bboxes[id].CornerMin().Y(), 
-            self.assembly.bboxes[id].CornerMax().Y(),
-            self.assembly.bboxes[id].CornerMin().Z(), 
-            self.assembly.bboxes[id].CornerMax().Z()]+\
-            [id]
-            for id in self.stepedparts
-        ], dtype=np.float32)
-        # embedding_mask = np.ones(len(self.allparts))
-        # embedding_mask[self.stepedparts] = 0
-
-        return [encoder_inputs, decoder_inputs]  # for pointer net
+        decoder_mask = np.ones((1,len(self.allparts)), dtype=np.float32)
+        decoder_mask[self.stepedparts] = 0.0  
+        # tgt_inputs = copy.deepcopy(src_inputs)
+        # tgt_inputs[self.stepedparts] = float(1e-9)    
+        return np.hstack((src_inputs, decoder_mask.transpose()), dtype=np.float32)
+        # return np.hstack((src_inputs, tgt_inputs), dtype=np.float32)  
 
     def comp_fit(self, one_path):
         """奖励函数"""

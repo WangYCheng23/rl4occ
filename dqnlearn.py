@@ -12,6 +12,7 @@ from env import Env
 from replay_buffer import ReplayBuffer
 from attention_q_net import MultiHeadAttention, AttentionQNet
 from pointer_network import PointerNet
+from transformerQnet import TransformerQnet
 from utils import pad_sequences_and_create_mask
 
 from memory_profiler import profile
@@ -23,6 +24,35 @@ class DQNAgent:
         self.env = env  # 定义环境对象
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 定义设备类型，如果GPU可用则使用GPU，否则使用CPU
         
+        self.input_dim = 10
+        self.d_model = 512
+        self.nhead = 8
+        self.num_encoder_layers = 6
+        self.num_decoder_layers = 6
+        self.dim_feedforward = 2048
+        self.dropout = 0.1
+        self.batch_first = True        
+        
+        self.eval_q_net = TransformerQnet(
+            input_dim=self.input_dim,
+            d_model=self.d_model,
+            nhead=self.nhead,
+            num_encoder_layers=self.num_encoder_layers,
+            num_decoder_layers=self.num_decoder_layers,
+            dim_feedforward=self.dim_feedforward,
+            dropout=self.dropout,
+            batch_first=self.batch_first
+        ).to(self.device)
+        self.target_q_net = TransformerQnet(
+            input_dim=self.input_dim,
+            d_model=self.d_model,
+            nhead=self.nhead,
+            num_encoder_layers=self.num_encoder_layers,
+            num_decoder_layers=self.num_decoder_layers,
+            dim_feedforward=self.dim_feedforward,
+            dropout=self.dropout,
+            batch_first=self.batch_first
+        ).to(self.device)            
         # # Q-net 超参数
         # self.input_dim = 11
         # self.output_dim = 1
@@ -33,15 +63,15 @@ class DQNAgent:
         # self.eval_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的估计网络
         # self.target_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的目标网络
         
-        self.input_dim = 10
-        self.embedding_dim = 128
-        self.hidden_dim = 512
-        self.lstm_layers = 2
-        self.dropout = 0
-        self.bidir = True
+        # self.input_dim = 10
+        # self.embedding_dim = 128
+        # self.hidden_dim = 512
+        # self.lstm_layers = 2
+        # self.dropout = 0
+        # self.bidir = True
         
-        self.eval_q_net = PointerNet(self.input_dim, self.embedding_dim, self.hidden_dim, self.lstm_layers, self.dropout, self.bidir).to(self.device)  # 定义q值的估计网络
-        self.target_q_net = PointerNet(self.input_dim, self.embedding_dim, self.hidden_dim, self.lstm_layers, self.dropout, self.bidir).to(self.device)  # 定义q值的目标网络
+        # self.eval_q_net = PointerNet(self.input_dim, self.embedding_dim, self.hidden_dim, self.lstm_layers, self.dropout, self.bidir).to(self.device)  # 定义q值的估计网络
+        # self.target_q_net = PointerNet(self.input_dim, self.embedding_dim, self.hidden_dim, self.lstm_layers, self.dropout, self.bidir).to(self.device)  # 定义q值的目标网络
         
         # 目标网络和估值网络权重一开始相同，为了在深度 Q 学习算法中稳定训练和提高效率
         # for param in self.eval_q_net.parameters():
@@ -93,17 +123,18 @@ class DQNAgent:
             action = int(np.random.choice(self.env.unstepparts))  # 根据概率分布选择动作
 
         else: 
-            encoder_input = torch.FloatTensor(state[0]).unsqueeze(0).to(self.device)  # 将当前状态转换为PyTorch的张量格式
-            if state[1].size == 0:
-                decoder_input = None
-            else:
-                decoder_input = torch.FloatTensor(state[1]).unsqueeze(0).to(self.device)
+            # encoder_input = torch.FloatTensor(state[0]).unsqueeze(0).to(self.device)  # 将当前状态转换为PyTorch的张量格式
+            # if state[1].size == 0:
+            #     decoder_input = None
+            # else:
+            #     decoder_input = torch.FloatTensor(state[1]).unsqueeze(0).to(self.device)
             # mask = torch.FloatTensor(state[2]).to(self.device)  # 将掩码转换为PyTorch的张量格式
+            state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+            src = state[:, :, :-1]  
+            tgt_mask = state[:, :, -1].unsqueeze(-1).expand(self.nhead,-1,src.size(-2))  
             self.eval_q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
             with torch.no_grad():
-                Q_vals, action = self.eval_q_net(
-                    encoder_input, decoder_input
-                )  # 使用Q网络预测当前状态下各个动作的Q值
+                qval = self.eval_q_net(src=src, tgt=src, tgt_mask=tgt_mask)  # 使用Q网络预测当前状态下各个动作的Q值
                 # masked_positions = self.env.stepedparts
                 # 创建掩码张量
                 # mask = torch.ones_like(Q_vals)  # 先创建一个全 1 的张量

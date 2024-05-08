@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-05-06 00:34:16
-LastEditTime: 2024-05-08 02:05:25
+LastEditTime: 2024-05-08 15:19:07
 '''
 import torch
 import torch.nn as nn
@@ -321,7 +321,7 @@ class PointerNet(nn.Module):
             decoder_input0 = self.decoder_input0.unsqueeze(0).expand(batch_size, -1)
             orders_idx = []
         else:
-            orders_idx = decoder_input0[:,:,-1]
+            orders_idx = decoder_input0[:,:,-1].keep
 
         encoder_inputs = encoder_inputs.view(batch_size * input_length, -1)
         encoder_embedded_inputs = self.embedding(encoder_inputs).view(batch_size, input_length, -1)
