@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-17 20:18:16
-LastEditTime: 2024-04-22 14:55:37
+LastEditTime: 2024-05-08 22:55:34
 '''
 import multiprocessing
 import time
@@ -73,7 +73,7 @@ from assembly import OCCAssembly
 import pickle
 
 def save_assembly_to_pickle(assembly_path):
-    filename = os.path.join('./pickle_data',assembly_path.split('/')[-1].replace('.step', '.pkl'))
+    filename = os.path.join('./misc',assembly_path.split('/')[-1].replace('.step', '.pkl'))
     assembly = OCCAssembly(assembly_path)
     print(assembly.get_part_num())
     assembly.create_boom()
@@ -113,12 +113,15 @@ def parallel_pack_step_files(step_files, num_processes):
     # 关闭进程池
     pool.close()
     pool.join()
+    
+if __name__ == "__main__":
+    cwd = os.getcwd()
+    
+    # 假设您有一个包含所有.step文件路径的列表
+    step_files_list = [os.path.join(cwd, 'data/train',file_path) for file_path in os.listdir(os.path.join(cwd, 'data/train'))]
 
-# 假设您有一个包含所有.step文件路径的列表
-step_files_list = [os.path.join(f'D:\\Document\\work\\rl4occ\\data\\train',file_path) for file_path in os.listdir(f'D:\\Document\\work\\rl4occ\\data\\train')]
+    # 选择您想要使用的并行进程数量
+    num_processes = multiprocessing.cpu_count()  # 使用所有可用的CPU核心
 
-# 选择您想要使用的并行进程数量
-num_processes = multiprocessing.cpu_count()  # 使用所有可用的CPU核心
-
-# 调用函数开始并行打包
-parallel_pack_step_files(step_files_list, 2)
+    # 调用函数开始并行打包
+    parallel_pack_step_files(step_files_list, 2)

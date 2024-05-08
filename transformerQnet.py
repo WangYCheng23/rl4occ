@@ -75,7 +75,8 @@ class TransformerQnet(Module):
                                                     **factory_kwargs)
             decoder_norm = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
             self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm)
-        self.outputL = nn.Linear(d_model, 1, **factory_kwargs)
+        self.outputL1 = nn.Linear(d_model, 64, **factory_kwargs)
+        self.outputL2 = nn.Linear(64, 1, **factory_kwargs)
         self._reset_parameters()
 
         self.d_model = d_model
@@ -136,6 +137,8 @@ class TransformerQnet(Module):
         """
 
         is_batched = src.dim() == 3
+        if is_batched:
+            batch_size = src.size(0)
         src = self.embedding(src)
         tgt = self.embedding(tgt)        
         if not self.batch_first and src.size(1) != tgt.size(1) and is_batched:
@@ -150,7 +153,12 @@ class TransformerQnet(Module):
         output = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
                               tgt_key_padding_mask=tgt_key_padding_mask,
                               memory_key_padding_mask=memory_key_padding_mask)
-        output = self.outputL(output)
+        output = self.outputL2(self.outputL1(output))
+        if tgt_mask != None:
+            tgt_mask = tgt_mask.view(batch_size,self.nhead,tgt_mask.size(-1),tgt_mask.size(-1))
+            tgt_mask = tgt_mask[:,0,0,:].squeeze(1).squeeze(1).unsqueeze(-1)
+            output = output.masked_fill(tgt_mask==0, -1e9)
+        
         return output
 
     @staticmethod
