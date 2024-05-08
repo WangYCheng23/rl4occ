@@ -134,7 +134,7 @@ class DQNAgent:
             tgt_mask = state[:, :, -1].unsqueeze(-1).expand(self.nhead,-1,src.size(-2))  
             self.eval_q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
             with torch.no_grad():
-                qval = self.eval_q_net(src=src, tgt=src, tgt_mask=tgt_mask)  # 使用Q网络预测当前状态下各个动作的Q值
+                qvals = self.eval_q_net(src=src, tgt=src, tgt_mask=tgt_mask)  # 使用Q网络预测当前状态下各个动作的Q值
                 # masked_positions = self.env.stepedparts
                 # 创建掩码张量
                 # mask = torch.ones_like(Q_vals)  # 先创建一个全 1 的张量
@@ -143,7 +143,7 @@ class DQNAgent:
                 # Q_vals = Q_vals.masked_fill_(mask==0, -float('inf')).detach().cpu().numpy()[0, :]  # 将Q值张量转换为NumPy数组，以便后续处理
                 
                 # action = np.argmax(Q_vals)  # 选择具有最大Q值的动作作为最优动作
-                action = int(action.detach().cpu().numpy()[0])
+                action = np.argmax(qvals.detach().cpu().numpy())
 
         return action  # 返回选择的动作
     
