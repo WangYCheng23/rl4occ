@@ -1,12 +1,21 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-20 13:36:05
-LastEditTime: 2024-04-29 23:55:13
+LastEditTime: 2024-05-09 01:48:19
 '''
 import numpy as np
 import torch
 from memory_profiler import profile
 
+def pad_sequences(sequences, state_tgt_mask, max_len, padding_value=0):
+    x = np.zeros((len(sequences), max_len, 10), dtype=np.float32)
+    p_mask = np.zeros((len(sequences), max_len), dtype=bool)
+    for i, seq in enumerate(sequences):
+        if len(seq) < max_len:
+            p_mask[i, len(seq):] = 1
+            state_tgt_mask[i] = np.pad(np.array(state_tgt_mask[i]), (0, max_len - len(seq)), 'constant', constant_values=1)
+            x[i,:,:] = np.concatenate((seq,np.array([[padding_value for _ in range(10)]]  * (max_len - len(seq)))))
+    return x, x, p_mask, p_mask, np.array(state_tgt_mask)
 
 # @profile(precision=4, stream=open("memory_profiler.log", "w+"))
 def pad_sequences_and_create_mask(sequences, padding_value=0):

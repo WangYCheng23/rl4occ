@@ -13,7 +13,7 @@ from replay_buffer import ReplayBuffer
 from attention_q_net import MultiHeadAttention, AttentionQNet
 from pointer_network import PointerNet
 from transformerQnet import TransformerQnet
-from utils import pad_sequences_and_create_mask
+from utils import pad_sequences_and_create_mask, pad_sequences
 
 from memory_profiler import profile
 
@@ -53,30 +53,7 @@ class DQNAgent:
             dropout=self.dropout,
             batch_first=self.batch_first
         ).to(self.device)            
-        # # Q-net 超参数
-        # self.input_dim = 11
-        # self.output_dim = 1
-        # self.hidden_dim = 256
-        # self.embed_dim = 256
-        # self.num_heads = 16
-        
-        # self.eval_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的估计网络
-        # self.target_q_net = AttentionQNet(self.input_dim, self.output_dim, self.hidden_dim, self.embed_dim, self.num_heads)  # 定义q值的目标网络
-        
-        # self.input_dim = 10
-        # self.embedding_dim = 128
-        # self.hidden_dim = 512
-        # self.lstm_layers = 2
-        # self.dropout = 0
-        # self.bidir = True
-        
-        # self.eval_q_net = PointerNet(self.input_dim, self.embedding_dim, self.hidden_dim, self.lstm_layers, self.dropout, self.bidir).to(self.device)  # 定义q值的估计网络
-        # self.target_q_net = PointerNet(self.input_dim, self.embedding_dim, self.hidden_dim, self.lstm_layers, self.dropout, self.bidir).to(self.device)  # 定义q值的目标网络
-        
-        # 目标网络和估值网络权重一开始相同，为了在深度 Q 学习算法中稳定训练和提高效率
-        # for param in self.eval_q_net.parameters():
-        #     if param.requires_grad:  # 确保参数是可训练的
-        #         nn.init.orthogonal_(param)
+
         self.target_q_net.load_state_dict(self.eval_q_net.state_dict())
         
         # 创建一个大小为buffer_size的经验回放缓冲区，用于存储智能体与环境交互的经验数据
@@ -123,13 +100,6 @@ class DQNAgent:
             action = int(np.random.choice(self.env.unstepparts))  # 根据概率分布选择动作
 
         else: 
-            # encoder_input = torch.FloatTensor(state[0]).unsqueeze(0).to(self.device)  # 将当前状态转换为PyTorch的张量格式
-            # if state[1].size == 0:
-            #     decoder_input = None
-            # else:
-            #     decoder_input = torch.FloatTensor(state[1]).unsqueeze(0).to(self.device)
-            # mask = torch.FloatTensor(state[2]).to(self.device)  # 将掩码转换为PyTorch的张量格式
-            # state = torch.FloatTensor(state)
             src = torch.FloatTensor(state[:, :-1]).unsqueeze(0).to(self.device)
             mask = state[:, -1]
             if np.all(state[:, -1]==1):
@@ -141,16 +111,6 @@ class DQNAgent:
             self.eval_q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
             with torch.no_grad():
                 qvals = self.eval_q_net(src=src, tgt=tgt, tgt_mask=tgt_mask)  # 使用Q网络预测当前状态下各个动作的Q值
-                # masked_positions = self.env.stepedparts
-                # 创建掩码张量
-                # mask = torch.ones_like(Q_vals)  # 先创建一个全 1 的张量
-                # # 将需要掩盖的位置置零
-                # mask[:,masked_positions] = 0
-                # Q_vals = Q_vals.masked_fill_(mask==0, -float('inf')).detach().cpu().numpy()[0, :]  # 将Q值张量转换为NumPy数组，以便后续处理
-                
-                # action = np.argmax(Q_vals)  # 选择具有最大Q值的动作作为最优动作
-                # if tgt_mask!=None:
-                #     qvals.masked_fill(tgt_mask==0, -float('inf'))
                 action = np.argmax(qvals.detach().cpu().numpy())
 
         return action  # 返回选择的动作
@@ -162,23 +122,41 @@ class DQNAgent:
             records = self.replay_buffer.sample(self.batch_size)  # 从经验回放缓冲区中随机抽样一批经验数据，大小为batch_size
 
             r = torch.FloatTensor(np.array(records['reward'])).unsqueeze(-1).to(self.device)  # batch_size x seq_len
-            state, state_mask = pad_sequences_and_create_mask(records['state']) # batch_size x seq_len
-            state = state.to(self.device)
-            state_mask = state_mask.to(self.device)
-            next_state, next_state_mask = pad_sequences_and_create_mask(records['next_state']) # batch_size x seq_len
-            next_state = next_state.to(self.device) 
-            next_state_mask = next_state_mask.to(self.device)
+            #************************************************************************************************#
+            max_seq = np.max([len(state) for state in records['state']])
+            state_src = [state[:,:-1] for state in records['state']]
+            state_tgt = state_src
+            state_tgt_mask = [state[:,-1] for state in records['state']]
+            state_src,state_tgt,state_src_padding_mask,state_tgt_padding_mask,state_tgt_mask= \
+                pad_sequences(state_src, state_tgt_mask, max_len=max_seq)  # batch_size x seq_len
+            state_src = torch.FloatTensor(state_src).to(self.device)
+            state_tgt = torch.FloatTensor(state_tgt).to(self.device)
+            state_tgt_mask = torch.BoolTensor(state_tgt_mask).unsqueeze(-2).unsqueeze(0).expand(self.nhead,-1,max_seq,-1).reshape(-1,max_seq,max_seq).to(self.device).detach()
+            state_src_padding_mask = torch.BoolTensor(state_src_padding_mask).to(self.device).detach()
+            state_tgt_padding_mask = torch.BoolTensor(state_tgt_padding_mask).to(self.device).detach()
+            
+            next_state_src = [next_state[:,:-1] for next_state in records['next_state']]
+            next_state_tgt = next_state_src
+            next_state_tgt_mask = [next_state[:,-1] for next_state in records['next_state']]
+            next_state_src,next_state_tgt,next_state_src_padding_mask,next_state_tgt_padding_mask,next_state_tgt_mask= \
+                pad_sequences(next_state_src, next_state_tgt_mask, max_len=max_seq)  # batch_size x seq_len
+            next_state_src = torch.FloatTensor(next_state_src).to(self.device)
+            next_state_tgt = torch.FloatTensor(next_state_tgt).to(self.device)
+            next_state_tgt_mask = torch.BoolTensor(next_state_tgt_mask).unsqueeze(-2).unsqueeze(0).expand(self.nhead,-1,max_seq,-1).reshape(-1,max_seq,max_seq).to(self.device).detach()
+            next_state_src_padding_mask = torch.BoolTensor(next_state_src_padding_mask).to(self.device).detach()
+            next_state_tgt_padding_mask = torch.BoolTensor(next_state_tgt_padding_mask).to(self.device).detach()
+            #************************************************************************************************#
             actions = torch.LongTensor(np.array(records['action'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
             isterminated = torch.BoolTensor(np.array(records['terminal'])).unsqueeze(dim=-1).to(self.device)  # batch_size x 1
             
-            q_value = self.eval_q_net(state, state_mask)  # batch_size x seq_len
+            q_value = self.eval_q_net(src=state_src, tgt=state_tgt, tgt_mask=state_tgt_mask, src_key_padding_mask=state_src_padding_mask, tgt_key_padding_mask=state_tgt_padding_mask)  # batch_size x seq_len
             q_value = q_value.gather(-1, actions)  # 根据当前状态和动作获取的q值                     
                 
             # DDQN
             with torch.no_grad():
-                next_q_value = self.eval_q_net(next_state, next_state_mask)  # 获取下一个状态下的q值
+                next_q_value = self.eval_q_net(src=next_state_src, tgt=next_state_tgt, tgt_mask=next_state_tgt_mask, src_key_padding_mask=next_state_src_padding_mask, tgt_key_padding_mask=next_state_tgt_padding_mask)  # 获取下一个状态下的q值
                 max_action_id = torch.argmax(next_q_value, dim=-1, keepdim=True)  # batch_size x 1
-                target_q_value = self.target_q_net(next_state, next_state_mask)
+                target_q_value = self.target_q_net(src=next_state_src, tgt=next_state_tgt, tgt_mask=next_state_tgt_mask, src_key_padding_mask=next_state_src_padding_mask, tgt_key_padding_mask=next_state_tgt_padding_mask)
                 target = r+self.gamma*target_q_value.gather(-1, max_action_id)*(~isterminated)  # 根据即时奖励和下个状态下做出最优动作后的q值得到的目标q值 batch_size x 1
 
             # dqn的拟合q值的损失函数 目标值减去q估计值的平方取平均值来确定loss函数
@@ -251,30 +229,9 @@ class DQNAgent:
             # episilon每一轮都要减少一个小数值，在每一轮训练中逐渐减小 ε（epsilon）值，即探索率。ε是在DQN中用于控制探索和利用之间的平衡的重要参数。通过逐渐减小 ε，模型在训练的早期会更多地进行探索，随着训练的进行，模型会更多地利用已经学到的知识。
 
             # 每20个episode进行一次训练
-            # if i % self.replace_steps_cycle == 0:
-            #     self.update(i)
+            if i % self.replace_steps_cycle == 0 and self.replay_buffer.can_sample(self.batch_size):
+                self.update(i)
 
-    # def save_optimevalue(self):  
-
-    #     self.env.reset()  # 重置环境，以便开始新的 episode
-
-    #     accreward = 0  # 初始化累积奖励为 0
-    #     isterminated = False  # 初始化是否终止标志为 False
-
-    #     while not isterminated:
-
-    #         state = self.env.get_state()  # 获取当前环境的状态
-
-    #         # 根据当前状态选择动作，这里的episilon设置为0，表示完全按照当前策略选择动作（训练时需要探索，测试时直接取1）
-    #         action = self.choose_action(state, 0)
-
-    #         reward, isterminated = self.env.step(
-    #             action)  # 执行选定的动作，获取即时奖励和是否终止的信息
-    #     # 使用训练好的dqn模型来采样一个episode，并且记录下最后的零件组装顺序到res，这个就是dqn产生的初始解，保存到文件中
-    #     # 将最终的零件组装顺序保存到变量res中，self.env.stepedparts保存了整个episode中的动作序列
-    #     res = np.array(self.env.stepedparts)
-    #     # 将最终的零件组装顺序保存到文件中，文件名以原始文件名加上 '_dqnvalue.npy' 结尾，以区分其他文件
-    #     np.save(self.env.step_filename+'_dqnvalue.npy', res)
 
 
 if __name__ == '__main__':

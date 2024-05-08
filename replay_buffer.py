@@ -1,7 +1,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-15 23:30:56
-LastEditTime: 2024-05-08 16:18:32
+LastEditTime: 2024-05-09 00:51:03
 '''
 import sys
 import numpy as np
@@ -28,7 +28,7 @@ class ReplayBuffer:
             self.is_full = True
 
     def can_sample(self, batch_size):
-        return self.capacity >= batch_size
+        return len(self)>= batch_size
     
     def sample(self, batch_size):
         if not self.is_full:
