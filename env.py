@@ -36,6 +36,10 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         decoder_mask = np.ones(len(self.allparts), dtype=np.float32)
         decoder_mask[self.stepedparts] = 0
         decoder_mask.shape = (len(self.allparts), 1)
+        
+        if self.stepedparts == []:
+            # src_inputs = np.random.random(src_inputs.shape)
+            decoder_mask = np.zeros((len(self.allparts),1), dtype=np.float32)
         # tgt_inputs = copy.deepcopy(src_inputs)
         # tgt_inputs[self.stepedparts] = float(1e-9)    
         return np.hstack((src_inputs, decoder_mask), dtype=np.float32)
