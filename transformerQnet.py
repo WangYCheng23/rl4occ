@@ -154,10 +154,10 @@ class TransformerQnet(Module):
                               tgt_key_padding_mask=tgt_key_padding_mask,
                               memory_key_padding_mask=memory_key_padding_mask)
         output = self.outputL2(self.outputL1(output))
-        if tgt_mask != None:
-            tgt_mask = tgt_mask.view(batch_size,self.nhead,tgt_mask.size(-1),tgt_mask.size(-1))
-            tgt_mask = tgt_mask[:,0,0,:].unsqueeze(-1)
-            output = output.masked_fill(tgt_mask==0, -1e9)  #TODO:初始的时候全部被mask了
+
+        tgt_mask = tgt_mask.view(batch_size,self.nhead,tgt_mask.size(-1),tgt_mask.size(-1))
+        tgt_mask = tgt_mask[:,0,0,:].unsqueeze(-1)
+        output = output.masked_fill(tgt_mask==0, -1e9)  #TODO:初始的时候全部被mask了
         
         return output
 

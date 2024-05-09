@@ -108,18 +108,15 @@ class DQNAgent:
         else:
             src = torch.FloatTensor(state[:, :-1]).unsqueeze(0).to(self.device)
             mask = state[:, -1]
-            if np.all(state[:, -1] == 1):
-                tgt = torch.rand_like(src).to(self.device)
-                tgt_mask = None
-            else:
-                tgt = src
-                tgt_mask = (
-                    torch.BoolTensor(mask.reshape(1, -1).repeat(len(state[:, -1]), 0))
-                    .unsqueeze(0)
-                    .expand(self.nhead, -1, -1)
-                    .to(self.device)
-                    .detach()
-                )  # 创建掩码张量
+
+            tgt = src
+            tgt_mask = (
+                torch.BoolTensor(mask.reshape(1, -1).repeat(len(state[:, -1]), 0))
+                .unsqueeze(0)
+                .expand(self.nhead, -1, -1)
+                .to(self.device)
+                .detach()
+            )  # 创建掩码张量
             self.eval_q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
             with torch.no_grad():
                 qvals = self.eval_q_net(
