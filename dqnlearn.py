@@ -241,7 +241,7 @@ class DQNAgent:
                     tgt_key_padding_mask=next_state_tgt_padding_mask,
                 )  # 获取下一个状态下的q值
                 max_action_id = torch.argmax(
-                    next_q_value, dim=-1, keepdim=True
+                    next_q_value, dim=-2, keepdim=False
                 )  # batch_size x 1
                 target_q_value = self.target_q_net(
                     src=next_state_src,
@@ -250,7 +250,7 @@ class DQNAgent:
                     src_key_padding_mask=next_state_src_padding_mask,
                     tgt_key_padding_mask=next_state_tgt_padding_mask,
                 )
-                target = r + self.gamma * target_q_value.gather(-1, max_action_id) * (
+                target = r + self.gamma * target_q_value.squeeze(-1).gather(-1, max_action_id) * (
                     ~isterminated
                 )  # 根据即时奖励和下个状态下做出最优动作后的q值得到的目标q值 batch_size x 1
 

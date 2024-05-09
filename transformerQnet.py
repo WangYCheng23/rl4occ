@@ -156,7 +156,7 @@ class TransformerQnet(Module):
         output = self.outputL2(self.outputL1(output))
         if tgt_mask != None:
             tgt_mask = tgt_mask.view(batch_size,self.nhead,tgt_mask.size(-1),tgt_mask.size(-1))
-            tgt_mask = tgt_mask[:,0,0,:].squeeze(1).squeeze(1).unsqueeze(-1)
+            tgt_mask = tgt_mask[:,0,0,:].unsqueeze(-1)
             output = output.masked_fill(tgt_mask==0, -1e9)
         
         return output
