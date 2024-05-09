@@ -63,7 +63,7 @@ class DQNAgent:
 
         # 训练超参数
         self.n_steps_update = 2  # 定义每次训练时使用的步数
-        self.batch_size = 16  # 定义每次训练时的批量大小
+        self.batch_size = 64  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
         self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=3e-5)
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
@@ -85,8 +85,8 @@ class DQNAgent:
         self.log = SummaryWriter(f"./logs/{self.datetime}")
 
     def update_episilon(self, step):
-        # return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 10000)
-        return 0
+        return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 10000)
+        # return 0
 
     def save_model(self, itr):  # 保存q估值网络
         if not os.path.exists(f"./model/{self.datetime}"):
@@ -117,10 +117,11 @@ class DQNAgent:
                 .to(self.device)
                 .detach()
             )  # 创建掩码张量
+            tgt_padding_mask = torch.BoolTensor(mask).reshape(1, -1).to(self.device).detach()
             self.eval_q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
             with torch.no_grad():
                 qvals = self.eval_q_net(
-                    src=src, tgt=tgt, tgt_mask=tgt_mask
+                    src=src, tgt=tgt, tgt_mask=tgt_mask, tgt_key_padding_mask=tgt_padding_mask
                 )  # 使用Q网络预测当前状态下各个动作的Q值
                 action = np.argmax(qvals.detach().cpu().numpy())
 
@@ -141,6 +142,7 @@ class DQNAgent:
             )  # batch_size x seq_len
             # ************************************************************************************************#
             max_seq = np.max([len(state) for state in records["state"]])
+            print("max_seq:", max_seq)
             state_src = [state[:, :-1] for state in records["state"]]
             state_tgt = state_src
             state_tgt_mask = [state[:, -1] for state in records["state"]]
@@ -195,6 +197,7 @@ class DQNAgent:
                 .unsqueeze(-2)
                 .unsqueeze(0)
                 .expand(self.nhead, -1, max_seq, -1)
+                .permute(1, 0, 2, 3)
                 .reshape(-1, max_seq, max_seq)
                 .to(self.device)
                 .detach()

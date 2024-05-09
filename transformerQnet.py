@@ -13,9 +13,42 @@ from torch.nn.modules.dropout import Dropout
 from torch.nn.modules.linear import Linear
 from torch.nn.modules.normalization import LayerNorm
 
-__all__ = ['TransformerQnet', 'TransformerEncoder', 'TransformerDecoder', 'TransformerEncoderLayer', 'TransformerDecoderLayer']
+__all__ = ['TransformerQnet', 'Transformer', 'TransformerEncoder', 'TransformerDecoder', 'TransformerEncoderLayer', 'TransformerDecoderLayer']
 
 class TransformerQnet(Module):
+    def __init__(self, input_dim: int, d_model: int = 512, nhead: int = 8, num_encoder_layers: int = 6,
+                 num_decoder_layers: int = 6, dim_feedforward: int = 2048, dropout: float = 0.1,
+                 activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+                 custom_encoder: Optional[Any] = None, custom_decoder: Optional[Any] = None,
+                 layer_norm_eps: float = 1e-5, batch_first: bool = False, norm_first: bool = False,
+                 device=None, dtype=None) -> None:
+        super(TransformerQnet, self).__init__()
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        
+        self.embedding = nn.Linear(input_dim, d_model, **factory_kwargs)
+        self.Transformer = Transformer(d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward,
+                                       dropout, activation, custom_encoder, custom_decoder,
+                                       layer_norm_eps, batch_first, norm_first, **factory_kwargs)
+        self.outputL1 = nn.Linear(d_model, 64, **factory_kwargs)
+        self.outputL2 = nn.Linear(64, 1, **factory_kwargs)
+        
+    def forward(self, src: Tensor, tgt: Tensor, src_mask: Optional[Tensor] = None, tgt_mask: Optional[Tensor] = None,
+                memory_mask: Optional[Tensor] = None, src_key_padding_mask: Optional[Tensor] = None,
+                tgt_key_padding_mask: Optional[Tensor] = None, memory_key_padding_mask: Optional[Tensor] = None):
+        
+        src = self.embedding(src)
+        tgt = self.embedding(tgt)  
+        output = self.Transformer(src, tgt, src_mask, tgt_mask, memory_mask, src_key_padding_mask, tgt_key_padding_mask, memory_key_padding_mask)
+        output = self.outputL2(self.outputL1(output))
+        output = output.masked_fill(tgt_key_padding_mask.unsqueeze(-1)==1, -1e9)
+
+        # tgt_mask = tgt_mask.view(batch_size,self.nhead,tgt_mask.size(-1),tgt_mask.size(-1))
+        # tgt_mask = tgt_mask[:,0,0,:].unsqueeze(-1)
+        # output = output.masked_fill(tgt_mask==0, -1e9)  #TODO:初始的时候全部被mask了    
+        # 
+        return output
+    
+class Transformer(Module):
     r"""A transformer model. User is able to modify the attributes as needed. The architecture
     is based on the paper "Attention Is All You Need". Ashish Vaswani, Noam Shazeer,
     Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Lukasz Kaiser, and
@@ -49,15 +82,15 @@ class TransformerQnet(Module):
     https://github.com/pytorch/examples/tree/master/word_language_model
     """
 
-    def __init__(self, input_dim: int, d_model: int = 512, nhead: int = 8, num_encoder_layers: int = 6,
+    def __init__(self, d_model: int = 512, nhead: int = 8, num_encoder_layers: int = 6,
                  num_decoder_layers: int = 6, dim_feedforward: int = 2048, dropout: float = 0.1,
                  activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                  custom_encoder: Optional[Any] = None, custom_decoder: Optional[Any] = None,
                  layer_norm_eps: float = 1e-5, batch_first: bool = False, norm_first: bool = False,
                  device=None, dtype=None) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
-        super(TransformerQnet, self).__init__()
-        self.embedding = nn.Linear(input_dim, d_model, **factory_kwargs)
+        super(Transformer, self).__init__()
+        
         if custom_encoder is not None:
             self.encoder = custom_encoder
         else:
@@ -75,8 +108,7 @@ class TransformerQnet(Module):
                                                     **factory_kwargs)
             decoder_norm = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
             self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm)
-        self.outputL1 = nn.Linear(d_model, 64, **factory_kwargs)
-        self.outputL2 = nn.Linear(64, 1, **factory_kwargs)
+
         self._reset_parameters()
 
         self.d_model = d_model
@@ -139,8 +171,7 @@ class TransformerQnet(Module):
         is_batched = src.dim() == 3
         if is_batched:
             batch_size = src.size(0)
-        src = self.embedding(src)
-        tgt = self.embedding(tgt)        
+      
         if not self.batch_first and src.size(1) != tgt.size(1) and is_batched:
             raise RuntimeError("the batch number of src and tgt must be equal")
         elif self.batch_first and src.size(0) != tgt.size(0) and is_batched:
@@ -153,11 +184,6 @@ class TransformerQnet(Module):
         output = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
                               tgt_key_padding_mask=tgt_key_padding_mask,
                               memory_key_padding_mask=memory_key_padding_mask)
-        output = self.outputL2(self.outputL1(output))
-
-        tgt_mask = tgt_mask.view(batch_size,self.nhead,tgt_mask.size(-1),tgt_mask.size(-1))
-        tgt_mask = tgt_mask[:,0,0,:].unsqueeze(-1)
-        output = output.masked_fill(tgt_mask==0, -1e9)  #TODO:初始的时候全部被mask了
         
         return output
 

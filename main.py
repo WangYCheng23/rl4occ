@@ -31,7 +31,7 @@ if __name__ == '__main__':
         
     step_filenames = [os.path.join(train_dir, path) for path in os.listdir(train_dir)]
     # pickle_dataset = np.random.permutation([os.path.join(pickle_dir, pickle_path) for pickle_path in os.listdir(pickle_dir)])
-    pickle_data_list = np.random.permutation([pickle_path for pickle_path in os.listdir(pickle_dir)])[:5]
+    pickle_data_list = np.random.permutation([pickle_path for pickle_path in os.listdir(pickle_dir)])[:50]
     # pickle_dataset = [pickle.load(open(os.path.join(pickle_dir, pickle_path),'rb')) for pickle_path in pickle_data_list]
     par = partial(load_pickle, pickle_dir)
 
