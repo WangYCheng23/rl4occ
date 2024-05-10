@@ -24,29 +24,37 @@ class TransformerQnet(Module):
                  device=None, dtype=None) -> None:
         super(TransformerQnet, self).__init__()
         factory_kwargs = {'device': device, 'dtype': dtype}
-        
+        self.device = factory_kwargs['device']
         self.embedding = nn.Linear(input_dim, d_model, **factory_kwargs)
         self.Transformer = Transformer(d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward,
                                        dropout, activation, custom_encoder, custom_decoder,
                                        layer_norm_eps, batch_first, norm_first, **factory_kwargs)
-        self.outputL1 = nn.Linear(d_model, 64, **factory_kwargs)
-        self.outputL2 = nn.Linear(64, 1, **factory_kwargs)
+        self.outputL1 = nn.Linear(d_model, 256, **factory_kwargs)
+        self.outputL2 = nn.Linear(256, 1, **factory_kwargs)
         
     def forward(self, src: Tensor, tgt: Tensor, src_mask: Optional[Tensor] = None, tgt_mask: Optional[Tensor] = None,
                 memory_mask: Optional[Tensor] = None, src_key_padding_mask: Optional[Tensor] = None,
                 tgt_key_padding_mask: Optional[Tensor] = None, memory_key_padding_mask: Optional[Tensor] = None):
-        
+        B, S = tgt.size(0), tgt.size(1)
         src = self.embedding(src)
         tgt = self.embedding(tgt)  
         output = self.Transformer(src, tgt, src_mask, tgt_mask, memory_mask, src_key_padding_mask, tgt_key_padding_mask, memory_key_padding_mask)
+        # output [B, S, E]
+        output = output.permute(1,0,2)
         output = self.outputL2(self.outputL1(output))
-        output = output.masked_fill(tgt_key_padding_mask.unsqueeze(-1)==1, -1e9)
+        output = output.permute(0,1,2).squeeze(-1)
+        # x = []
+        # for o in output:
+        #     o = self.outputL2(self.outputL1(o))
+        #     x.append(o)
+        # x = torch.FloatTensor(x).reshape(B,S).to(self.device)
+        output = output.masked_fill(tgt_key_padding_mask==1, -1e9)
 
         # tgt_mask = tgt_mask.view(batch_size,self.nhead,tgt_mask.size(-1),tgt_mask.size(-1))
         # tgt_mask = tgt_mask[:,0,0,:].unsqueeze(-1)
         # output = output.masked_fill(tgt_mask==0, -1e9)  #TODO:初始的时候全部被mask了    
         # 
-        return output
+        return output    # [B, S]
     
 class Transformer(Module):
     r"""A transformer model. User is able to modify the attributes as needed. The architecture

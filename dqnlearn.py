@@ -32,7 +32,7 @@ class DQNAgent:
         self.num_encoder_layers = 6
         self.num_decoder_layers = 6
         self.dim_feedforward = 2048
-        self.dropout = 0.1
+        self.dropout = 0
         self.batch_first = True
 
         self.eval_q_net = TransformerQnet(
@@ -44,7 +44,8 @@ class DQNAgent:
             dim_feedforward=self.dim_feedforward,
             dropout=self.dropout,
             batch_first=self.batch_first,
-        ).to(self.device)
+            device=self.device
+        )
         self.target_q_net = TransformerQnet(
             input_dim=self.input_dim,
             d_model=self.d_model,
@@ -54,7 +55,8 @@ class DQNAgent:
             dim_feedforward=self.dim_feedforward,
             dropout=self.dropout,
             batch_first=self.batch_first,
-        ).to(self.device)
+            device=self.device
+        )
 
         self.target_q_net.load_state_dict(self.eval_q_net.state_dict())
 
@@ -85,7 +87,7 @@ class DQNAgent:
         self.log = SummaryWriter(f"./logs/{self.datetime}")
 
     def update_episilon(self, step):
-        return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 10000)
+        return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 5000)
         # return 0
 
     def save_model(self, itr):  # 保存q估值网络
@@ -115,9 +117,8 @@ class DQNAgent:
                 .unsqueeze(0)
                 .expand(self.nhead, -1, -1)
                 .to(self.device)
-                .detach()
             )  # 创建掩码张量
-            tgt_padding_mask = torch.BoolTensor(mask).reshape(1, -1).to(self.device).detach()
+            tgt_padding_mask = torch.BoolTensor(mask).reshape(1, -1).to(self.device)
             self.eval_q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
             with torch.no_grad():
                 qvals = self.eval_q_net(
@@ -165,13 +166,12 @@ class DQNAgent:
                 .permute(1, 0, 2, 3)
                 .reshape(-1, max_seq, max_seq)
                 .to(self.device)
-                .detach()
             )
             state_src_padding_mask = (
-                torch.BoolTensor(state_src_padding_mask).to(self.device).detach()
+                torch.BoolTensor(state_src_padding_mask).to(self.device)
             )
             state_tgt_padding_mask = (
-                torch.BoolTensor(state_tgt_padding_mask).to(self.device).detach()
+                torch.BoolTensor(state_tgt_padding_mask).to(self.device)
             )
 
             next_state_src = [
@@ -200,13 +200,12 @@ class DQNAgent:
                 .permute(1, 0, 2, 3)
                 .reshape(-1, max_seq, max_seq)
                 .to(self.device)
-                .detach()
             )
             next_state_src_padding_mask = (
-                torch.BoolTensor(next_state_src_padding_mask).to(self.device).detach()
+                torch.BoolTensor(next_state_src_padding_mask).to(self.device)
             )
             next_state_tgt_padding_mask = (
-                torch.BoolTensor(next_state_tgt_padding_mask).to(self.device).detach()
+                torch.BoolTensor(next_state_tgt_padding_mask).to(self.device)
             )
             # ************************************************************************************************#
             actions = (
