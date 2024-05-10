@@ -65,7 +65,7 @@ class DQNAgent:
 
         # 训练超参数
         self.n_steps_update = 2  # 定义每次训练时使用的步数
-        self.batch_size = 256  # 定义每次训练时的批量大小
+        self.batch_size = 128  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
         self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=3e-3)
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
@@ -249,7 +249,7 @@ class DQNAgent:
                     src_key_padding_mask=next_state_src_padding_mask,
                     tgt_key_padding_mask=next_state_tgt_padding_mask,
                 )
-                target = r + self.gamma * target_q_value.squeeze(-1).gather(-1, max_action_id) * (
+                target = r + self.gamma * target_q_value.gather(-1, max_action_id) * (
                     ~isterminated
                 )  # 根据即时奖励和下个状态下做出最优动作后的q值得到的目标q值 batch_size x 1
 
