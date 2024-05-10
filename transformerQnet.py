@@ -42,7 +42,7 @@ class TransformerQnet(Module):
         # output [B, S, E]
         output = output.permute(1,0,2)
         output = self.outputL2(self.outputL1(output))
-        output = output.permute(0,1,2).squeeze(-1)
+        output = output.permute(1,0,2).squeeze(-1)
         # x = []
         # for o in output:
         #     o = self.outputL2(self.outputL1(o))
