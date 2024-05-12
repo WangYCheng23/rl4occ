@@ -12,3 +12,4 @@ __pycache__
 *.html
 *.bin
 *.zip
+sorted_step_files/*
