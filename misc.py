@@ -2,7 +2,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-17 20:18:16
-LastEditTime: 2024-05-13 10:41:21
+LastEditTime: 2024-05-13 11:03:07
 '''
 import multiprocessing
 import time
@@ -111,7 +111,7 @@ def parallel_pack_step_files(step_files, out_path, num_processes):
     pool = multiprocessing.Pool(processes=num_processes)
     
     # 使用多进程映射执行worker函数
-    pool.map(worker, (step_files, out_path))
+    pool.starmap(worker, list(zip(step_files, [out_path]*len(step_files))))
     
     # 关闭进程池
     pool.close()
