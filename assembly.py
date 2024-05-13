@@ -1,4 +1,5 @@
 #-- coding:UTF-8 --
+import os
 import OCC
 # 导入OCC模块
 from OCC.Extend.DataExchange import read_step_file, STEPControl_Reader, STEPControl_Writer
@@ -445,7 +446,8 @@ class OCCAssembly:
 
 
 if __name__ == '__main__':
-    step_filename = 'assembly.step'
+    cwd = os.getcwd()
+    step_filename = os.path.join(cwd, f'sorted_step_files/10-30个/assembly0.step')
     assembly = OCCAssembly(step_filename)
     part_num = assembly.get_part_num()
 

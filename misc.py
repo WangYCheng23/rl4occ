@@ -2,9 +2,10 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-17 20:18:16
-LastEditTime: 2024-05-13 11:03:07
+LastEditTime: 2024-05-13 16:42:02
 '''
 import multiprocessing
+import sys
 import time
 import torch
 from assembly import OCCAssembly
@@ -76,7 +77,10 @@ import pickle
 def save_assembly_to_pickle(assembly_path, out_path):
     if not os.path.exists(out_path):
         os.makedirs(out_path)
-    filename = os.path.join(out_path, assembly_path.split('/')[-1].replace('.step', '.pkl'))
+    if sys.platform == "win32":
+        filename = os.path.join(out_path, assembly_path.split('\\')[-1].replace('.step', '.pkl'))
+    else:
+        filename = os.path.join(out_path, assembly_path.split('/')[-1].replace('.step', '.pkl'))
     assembly = OCCAssembly(assembly_path)
     print(assembly.get_part_num())
     assembly.create_boom()
