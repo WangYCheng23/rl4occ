@@ -2,7 +2,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-17 20:18:16
-LastEditTime: 2024-05-08 22:55:34
+LastEditTime: 2024-05-13 10:41:21
 '''
 import multiprocessing
 import time
@@ -73,8 +73,10 @@ import numpy as np
 from assembly import OCCAssembly
 import pickle
 
-def save_assembly_to_pickle(assembly_path):
-    filename = os.path.join('./misc',assembly_path.split('/')[-1].replace('.step', '.pkl'))
+def save_assembly_to_pickle(assembly_path, out_path):
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
+    filename = os.path.join(out_path, assembly_path.split('/')[-1].replace('.step', '.pkl'))
     assembly = OCCAssembly(assembly_path)
     print(assembly.get_part_num())
     assembly.create_boom()
@@ -87,11 +89,11 @@ def load_assembly_from_pickle(assembly_path):
         assembly = pickle.load(f)
     return assembly
 
-def worker(assembly_path):
+def worker(assembly_path, out_path):
     try:
         # 这里是你的工作逻辑
         print(f"Process {assembly_path} is running")
-        save_assembly_to_pickle(assembly_path)  # 假设我们在这里模拟工作
+        save_assembly_to_pickle(assembly_path, out_path)  # 假设我们在这里模拟工作
         # 如果发生异常，则会跳到 except 块
         # raise ValueError("Something went wrong!")  # 假设这里发生了一个错误
     except Exception as e:
@@ -103,13 +105,13 @@ def worker(assembly_path):
     # 如果没有异常，正常结束进程
     print(f"Process {assembly_path} finished successfully")
 
-def parallel_pack_step_files(step_files, num_processes):
+def parallel_pack_step_files(step_files, out_path, num_processes):
     """并行打包.step文件的函数""" 
     # 创建一个进程池
     pool = multiprocessing.Pool(processes=num_processes)
     
     # 使用多进程映射执行worker函数
-    pool.map(worker, step_files)
+    pool.map(worker, (step_files, out_path))
     
     # 关闭进程池
     pool.close()
@@ -118,11 +120,14 @@ def parallel_pack_step_files(step_files, num_processes):
 if __name__ == "__main__":
     cwd = os.getcwd()
     
-    # 假设您有一个包含所有.step文件路径的列表
-    step_files_list = [os.path.join(cwd, 'data/train',file_path) for file_path in os.listdir(os.path.join(cwd, 'data/train'))]
+    for dir_path in os.listdir(os.path.join(cwd, 'sorted_step_files')):
+    
+        # 假设您有一个包含所有.step文件路径的列表
+        step_files_list = [os.path.join(cwd, 'sorted_step_files', dir_path, file_path) for file_path in os.listdir(os.path.join(cwd, 'sorted_step_files', dir_path))]
 
-    # 选择您想要使用的并行进程数量
-    num_processes = multiprocessing.cpu_count()  # 使用所有可用的CPU核心
+        # 选择您想要使用的并行进程数量
+        num_processes = multiprocessing.cpu_count()  # 使用所有可用的CPU核心
 
-    # 调用函数开始并行打包
-    parallel_pack_step_files(step_files_list, 2)
+        out_path = os.path.join(cwd, 'pickle_data', dir_path)
+        # 调用函数开始并行打包
+        parallel_pack_step_files(step_files_list, out_path, num_processes)
