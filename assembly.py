@@ -1,3 +1,4 @@
+#-- coding:UTF-8 --
 import OCC
 # 导入OCC模块
 from OCC.Extend.DataExchange import read_step_file, STEPControl_Reader, STEPControl_Writer
