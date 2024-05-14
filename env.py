@@ -22,7 +22,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
 
     def get_state(self):  # 将装配体的状态转换成一个适合神经网络处理的向量形式
         """状态空间"""
-        states = collections.nametuple("src", "tgt", "mask")
+        states = collections.namedtuple("State",["src", "tgt", "mask"])
         # d_model = 10
         src_inputs = np.array([
             self.assembly.boom_transform[id].direction+\
@@ -35,17 +35,23 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
             [id]
             for id in self.allparts
         ], dtype=np.float32)
-        decoder_mask = np.zeros(len(self.allparts), dtype=np.float32)
-        decoder_mask[self.stepedparts] = 1
-        decoder_mask.shape = (len(self.allparts), 1)
-        
-        # if self.stepedparts == []:
-            # src_inputs = np.random.random(src_inputs.shape)
-            # decoder_mask = np.zeros((len(self.allparts),1), dtype=np.float32)
-        # tgt_inputs = copy.deepcopy(src_inputs)
-        # tgt_inputs[self.stepedparts] = float(1e-9)    
-        return np.hstack((src_inputs, decoder_mask), dtype=np.float32)
-        # return np.hstack((src_inputs, tgt_inputs), dtype=np.float32)  
+        tgt_inputs = np.array([
+            self.assembly.boom_transform[id].direction+\
+            [self.assembly.bboxes[id].CornerMin().X(), 
+            self.assembly.bboxes[id].CornerMax().X(), 
+            self.assembly.bboxes[id].CornerMin().Y(), 
+            self.assembly.bboxes[id].CornerMax().Y(),
+            self.assembly.bboxes[id].CornerMin().Z(), 
+            self.assembly.bboxes[id].CornerMax().Z()]+\
+            [id]
+            for id in self.stepedparts
+        ])
+        if len(self.stepedparts)==0:
+            tgt_inputs = np.random.random((1, src_inputs.shape[-1])) # 初始tgt随机
+        mask = np.zeros(len(self.allparts), dtype=np.float32)
+        mask[self.stepedparts] = 1
+          
+        return states(src_inputs, tgt_inputs, mask)
 
     def comp_fit(self, one_path):
         """奖励函数"""

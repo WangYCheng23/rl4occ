@@ -109,21 +109,25 @@ class DQNAgent:
             action = int(np.random.choice(self.env.unstepparts))  # 根据概率分布选择动作
 
         else:
-            src = torch.FloatTensor(state[:, :-1]).unsqueeze(0).to(self.device)
-            mask = state[:, -1]
+            # src = torch.FloatTensor(state[:, :-1]).unsqueeze(0).to(self.device)
+            # mask = state[:, -1]
 
-            tgt = src
-            tgt_mask = (
-                torch.BoolTensor(mask.reshape(1, -1).repeat(len(state[:, -1]), 0))
-                .unsqueeze(0)
-                .expand(self.nhead, -1, -1)
-                .to(self.device)
-            )  # 创建掩码张量
-            tgt_padding_mask = torch.BoolTensor(mask).reshape(1, -1).to(self.device)
+            # tgt = src
+            src = torch.FloatTensor(state.src).unsqueeze(0).to(self.device)
+            tgt = torch.FloatTensor(state.tgt).unsqueeze(0).to(self.device)
+            mask = torch.BoolTensor(state.mask).unsqueeze(0).to(self.device)
+            
+            # tgt_mask = (
+            #     torch.BoolTensor(mask.reshape(1, -1).repeat(len(state[:, -1]), 0))
+            #     .unsqueeze(0)
+            #     .expand(self.nhead, -1, -1)
+            #     .to(self.device)
+            # )  # 创建 atten mask
+            # tgt_padding_mask = torch.BoolTensor(mask).reshape(1, -1).to(self.device)
             self.eval_q_net.eval()  # 将Q网络设置为评估模式，确保在选择动作时不会更新其参数
             with torch.no_grad():
                 qvals = self.eval_q_net(
-                    src=src, tgt=tgt, tgt_mask=tgt_mask, tgt_key_padding_mask=tgt_padding_mask
+                    src=src, tgt=tgt, mask=mask
                 )  # 使用Q网络预测当前状态下各个动作的Q值
                 action = np.argmax(qvals.detach().cpu().numpy())
 

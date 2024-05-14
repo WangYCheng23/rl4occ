@@ -16,6 +16,23 @@ from torch.nn.modules.normalization import LayerNorm
 
 __all__ = ['TransformerQnet', 'Transformer', 'TransformerEncoder', 'TransformerDecoder', 'TransformerEncoderLayer', 'TransformerDecoderLayer']
 
+
+def generate_positional_encoding(d_model, max_len=1000):
+    """
+    Create standard transformer PEs.
+    Inputs :  
+      d_model is a scalar correspoding to the hidden dimension
+      max_len is the maximum length of the sequence
+    Output :  
+      pe of size (max_len, d_model), where d_model=dim_emb, max_len=1000
+    """
+    pe = torch.zeros(max_len, d_model)
+    position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+    div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-torch.log(torch.tensor(10000.0)) / d_model))
+    pe[:,0::2] = torch.sin(position * div_term)
+    pe[:,1::2] = torch.cos(position * div_term)
+    return pe
+
 class TransformerQnet(Module):
     def __init__(self, input_dim: int, d_model: int = 512, nhead: int = 8, num_encoder_layers: int = 6,
                  num_decoder_layers: int = 6, dim_feedforward: int = 2048, dropout: float = 0.1,
@@ -25,21 +42,25 @@ class TransformerQnet(Module):
                  device=None, dtype=None) -> None:
         super(TransformerQnet, self).__init__()
         factory_kwargs = {'device': device, 'dtype': dtype}
+        self.n_max_nodes = 30
         self.device = factory_kwargs['device']
         self.embedding = nn.Linear(input_dim, d_model, **factory_kwargs)
+        self.pe = generate_positional_encoding(d_model).to(self.device)
         self.Transformer = Transformer(d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward,
                                        dropout, activation, custom_encoder, custom_decoder,
                                        layer_norm_eps, batch_first, norm_first, **factory_kwargs)
-        self.outputL1 = nn.Linear(d_model, 256, **factory_kwargs)
-        self.outputL2 = nn.Linear(256, 1, **factory_kwargs)
+        self.fc1 = nn.Linear(d_model, 256, **factory_kwargs)
+        self.fc2 = nn.Linear(256, self.n_max_nodes, **factory_kwargs)    # 30代表最大零件数量
         
     def forward(self, src: Tensor, tgt: Tensor, src_mask: Optional[Tensor] = None, tgt_mask: Optional[Tensor] = None,
                 memory_mask: Optional[Tensor] = None, src_key_padding_mask: Optional[Tensor] = None,
-                tgt_key_padding_mask: Optional[Tensor] = None, memory_key_padding_mask: Optional[Tensor] = None):
+                tgt_key_padding_mask: Optional[Tensor] = None, memory_key_padding_mask: Optional[Tensor] = None, mask=None):
         B, S = tgt.size(0), tgt.size(1)
         src = self.embedding(src)
-        tgt = self.embedding(tgt)  
+        tgt = self.embedding(tgt)
+        tgt = tgt + self.pe[:tgt.size(0), :]
         output, weight = self.Transformer(src, tgt, src_mask, tgt_mask, memory_mask, src_key_padding_mask, tgt_key_padding_mask, memory_key_padding_mask)
+        output = self.fc2(self.fc1(output))
         # output [B, S, E] as q
         # weight [B, S, 1]
         # output = output.permute(1,0,2)
@@ -50,13 +71,18 @@ class TransformerQnet(Module):
         #     o = self.outputL2(self.outputL1(o))
         #     x.append(o)
         # x = torch.FloatTensor(x).reshape(B,S).to(self.device)
-        weight = weight.masked_fill(tgt_key_padding_mask==1, -1e9)
+        if mask.size(-1)!=self.n_max_nodes:
+            mask = F.pad(mask, (0, self.n_max_nodes-mask.size(-1)), 'constant', 1)
+        if tgt_key_padding_mask==None:
+            output = output[:,-1,:]         
+        output = output.masked_fill(mask==1, -1e9)
+
 
         # tgt_mask = tgt_mask.view(batch_size,self.nhead,tgt_mask.size(-1),tgt_mask.size(-1))
         # tgt_mask = tgt_mask[:,0,0,:].unsqueeze(-1)
         # output = output.masked_fill(tgt_mask==0, -1e9)  #TODO:初始的时候全部被mask了    
         # 
-        return weight    # [B, S]
+        return output    # [B, S]
     
 class Transformer(Module):
     r"""A transformer model. User is able to modify the attributes as needed. The architecture
@@ -696,7 +722,7 @@ class TransformerDecoderLayer(Module):
             x = x + self._mha_block(self.norm2(x), memory, memory_mask, memory_key_padding_mask)
             x = x + self._ff_block(self.norm3(x))
         else:
-            x = self.norm1(x + self._sa_block(x, tgt_mask, tgt_key_padding_mask))[0]
+            x = self.norm1(x + self._sa_block(x, tgt_mask, tgt_key_padding_mask)[0])
             x = self.norm2(x + self._mha_block(x, memory, memory_mask, memory_key_padding_mask))
             x = self.norm3(x + self._ff_block(x))
 

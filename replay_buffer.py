@@ -2,10 +2,12 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-15 23:30:56
-LastEditTime: 2024-05-09 00:51:03
+LastEditTime: 2024-05-15 00:05:42
 '''
 import sys
 import numpy as np
+# from collections import namedtuple
+from typing import NamedTuple
 from memory_profiler import profile
 
 class ReplayBuffer:
@@ -14,10 +16,10 @@ class ReplayBuffer:
         self.current_idx = 0
         self.is_full = False
         self.buffer = np.empty((capacity,), dtype=[
-            ('state', np.ndarray),
+            ('state', object),
             ('action', np.int32),
             ('reward', np.float32),
-            ('next_state', np.ndarray),
+            ('next_state', object),
             ('terminal', bool)
         ])
 
