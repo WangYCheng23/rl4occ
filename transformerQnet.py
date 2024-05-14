@@ -39,23 +39,24 @@ class TransformerQnet(Module):
         B, S = tgt.size(0), tgt.size(1)
         src = self.embedding(src)
         tgt = self.embedding(tgt)  
-        output = self.Transformer(src, tgt, src_mask, tgt_mask, memory_mask, src_key_padding_mask, tgt_key_padding_mask, memory_key_padding_mask)
-        # output [B, S, E]
-        output = output.permute(1,0,2)
-        output = self.outputL2(self.outputL1(output))
-        output = output.permute(1,0,2).squeeze(-1)
+        output, weight = self.Transformer(src, tgt, src_mask, tgt_mask, memory_mask, src_key_padding_mask, tgt_key_padding_mask, memory_key_padding_mask)
+        # output [B, S, E] as q
+        # weight [B, S, 1]
+        # output = output.permute(1,0,2)
+        # output = self.outputL2(self.outputL1(output))
+        # output = output.permute(1,0,2).squeeze(-1)
         # x = []
         # for o in output:
         #     o = self.outputL2(self.outputL1(o))
         #     x.append(o)
         # x = torch.FloatTensor(x).reshape(B,S).to(self.device)
-        output = output.masked_fill(tgt_key_padding_mask==1, -1e9)
+        weight = weight.masked_fill(tgt_key_padding_mask==1, -1e9)
 
         # tgt_mask = tgt_mask.view(batch_size,self.nhead,tgt_mask.size(-1),tgt_mask.size(-1))
         # tgt_mask = tgt_mask[:,0,0,:].unsqueeze(-1)
         # output = output.masked_fill(tgt_mask==0, -1e9)  #TODO:初始的时候全部被mask了    
         # 
-        return output    # [B, S]
+        return weight    # [B, S]
     
 class Transformer(Module):
     r"""A transformer model. User is able to modify the attributes as needed. The architecture
@@ -190,11 +191,11 @@ class Transformer(Module):
             raise RuntimeError("the feature number of src and tgt must be equal to d_model")
 
         memory = self.encoder(src, mask=src_mask, src_key_padding_mask=src_key_padding_mask)
-        output = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
+        output, weight = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
                               tgt_key_padding_mask=tgt_key_padding_mask,
                               memory_key_padding_mask=memory_key_padding_mask)
         
-        return output
+        return output, weight
 
     @staticmethod
     def generate_square_subsequent_mask(sz: int, device='cpu') -> Tensor:
@@ -377,15 +378,15 @@ class TransformerDecoder(Module):
         output = tgt
 
         for mod in self.layers:
-            output = mod(output, memory, tgt_mask=tgt_mask,
-                         memory_mask=memory_mask,
-                         tgt_key_padding_mask=tgt_key_padding_mask,
-                         memory_key_padding_mask=memory_key_padding_mask)
+            output, weight = mod(output, memory, tgt_mask=tgt_mask,
+                                memory_mask=memory_mask,
+                                tgt_key_padding_mask=tgt_key_padding_mask,
+                                memory_key_padding_mask=memory_key_padding_mask)
 
         if self.norm is not None:
             output = self.norm(output)
 
-        return output
+        return output, weight
 
 class TransformerEncoderLayer(Module):
     r"""TransformerEncoderLayer is made up of self-attn and feedforward network.
@@ -691,24 +692,26 @@ class TransformerDecoderLayer(Module):
 
         x = tgt
         if self.norm_first:
-            x = x + self._sa_block(self.norm1(x), tgt_mask, tgt_key_padding_mask)
+            x = x + self._sa_block(self.norm1(x), tgt_mask, tgt_key_padding_mask)[0]
             x = x + self._mha_block(self.norm2(x), memory, memory_mask, memory_key_padding_mask)
             x = x + self._ff_block(self.norm3(x))
         else:
-            x = self.norm1(x + self._sa_block(x, tgt_mask, tgt_key_padding_mask))
+            x = self.norm1(x + self._sa_block(x, tgt_mask, tgt_key_padding_mask))[0]
             x = self.norm2(x + self._mha_block(x, memory, memory_mask, memory_key_padding_mask))
             x = self.norm3(x + self._ff_block(x))
 
-        return x
+        atten_output, atten_weight = self._sa_block(x, tgt_mask, tgt_key_padding_mask)
+        
+        return atten_output, atten_weight
 
     # self-attention block
     def _sa_block(self, x: Tensor,
                   attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor]) -> Tensor:
-        x = self.self_attn(x, x, x,
+        x, y = self.self_attn(x, x, x,
                            attn_mask=attn_mask,
                            key_padding_mask=key_padding_mask,
-                           need_weights=False)[0]
-        return self.dropout1(x)
+                           need_weights=False)
+        return self.dropout1(x), y
 
     # multihead attention block
     def _mha_block(self, x: Tensor, mem: Tensor,

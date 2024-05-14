@@ -1,4 +1,5 @@
 #-- coding:UTF-8 --
+import collections
 import gc
 import os
 import pickle
@@ -21,7 +22,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
 
     def get_state(self):  # 将装配体的状态转换成一个适合神经网络处理的向量形式
         """状态空间"""
-        
+        states = collections.nametuple("src", "tgt", "mask")
         # d_model = 10
         src_inputs = np.array([
             self.assembly.boom_transform[id].direction+\

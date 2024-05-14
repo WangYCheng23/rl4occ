@@ -2,10 +2,11 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-20 01:46:06
-LastEditTime: 2024-05-09 00:02:35
+LastEditTime: 2024-05-14 14:12:40
 
 '''
 import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import pickle
 import sys
 import numpy as np
@@ -24,11 +25,11 @@ if __name__ == '__main__':
     cwd = os.getcwd()
 
     if sys.platform == 'linux':
-        train_dir = os.path.join(cwd, 'data/train/')
-        pickle_dir = os.path.join(cwd, 'pickle_data/')
+        train_dir = os.path.join(cwd, 'sorted_step_files/10-30个')
+        pickle_dir = os.path.join(cwd, 'pickle_data/10-30个')
     elif sys.platform == 'win32':
-        train_dir = os.path.join(cwd, f'data\\train')
-        pickle_dir = os.path.join(cwd, f'pickle_data')
+        train_dir = os.path.join(cwd, f'sorted_step_files\\10-30个')
+        pickle_dir = os.path.join(cwd, f'pickle_data\\10-30个')
         
     step_filenames = [os.path.join(train_dir, path) for path in os.listdir(train_dir)]
     # pickle_dataset = np.random.permutation([os.path.join(pickle_dir, pickle_path) for pickle_path in os.listdir(pickle_dir)])

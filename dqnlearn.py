@@ -28,7 +28,7 @@ class DQNAgent:
         )  # 定义设备类型，如果GPU可用则使用GPU，否则使用CPU
 
         self.input_dim = 10
-        self.d_model = 512
+        self.d_model = 128
         self.nhead = 8
         self.num_encoder_layers = 6
         self.num_decoder_layers = 6
