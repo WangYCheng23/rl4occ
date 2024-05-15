@@ -149,7 +149,7 @@ class DQNAgent:
                 .unsqueeze(-1)
                 .to(self.device)
             )  # batch_size x seq_len
-            # ************************************************************************************************#
+            # **************************************** State **************************************** #
             max_src_seq = np.max([len(state.src) for state in records["state"]])
             max_tgt_seq = np.max([len(state.tgt) for state in records["state"]])
             # print("max_seq:", max_seq)
@@ -166,57 +166,70 @@ class DQNAgent:
             )  # batch_size x seq_len
             state_src = torch.FloatTensor(state_src).to(self.device)
             state_tgt = torch.FloatTensor(state_tgt).to(self.device)
-            state_src_mask = state_src[:, :, 0].unsqueeze(0).unsqueeze(-2).expand(
-                self.nhead, -1, self.n_max_nodes, -1
-            ).tanspose(1, 0, 2, 3).reshape(
-                -1, self.n_max_nodes, self.n_max_nodes
-            ) == -float(
-                "inf"
-            )
-            state_src_padding_mask = state_src[:, :, 0] == -float("inf")
-            state_tgt_mask = (
+            state_src_mask = torch.BoolTensor(
+                state_src[:, :, 0]
+                .unsqueeze(0)
+                .unsqueeze(-2)
+                .expand(self.nhead, -1, self.n_max_nodes, -1)
+                .tanspose(1, 0, 2, 3)
+                .reshape(-1, self.n_max_nodes, self.n_max_nodes)
+                == -float("inf")
+            ).to(
+                self.device
+            )  # batch_size*nhead x seq_len x seq_len
+            state_src_padding_mask = torch.BoolTensor(state_src[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
+            state_tgt_mask = torch.BoolTensor(
                 state_tgt[:, :, 0]
                 .unsqueeze(0)
                 .unsqueeze(-2)
                 .expand(self.nhead, -1, self.n_max_nodes, -1)
-            )
-            state_tgt_padding_mask = state_tgt[:, :, 0] == -float("inf")
-            state_memory_mask = None
+            ).to(
+                self.device
+            )  # batch_size*nhead x seq_len x seq_len
+            state_tgt_padding_mask = torch.BoolTensor(state_tgt[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
+            state_tgt_memory_mask = None
+            state_tgt_memory_padding_mask = torch.BoolTensor(state_tgt[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
             ################################################################
-            next_state_src = [
-                next_state[:, :-1] for next_state in records["next_state"]
-            ]
-            next_state_tgt = next_state_src
-            next_state_tgt_mask = [
-                next_state[:, -1] for next_state in records["next_state"]
-            ]
+            max_src_seq = np.max([len(next_state.src) for next_state in records["next_state"]])
+            max_tgt_seq = np.max([len(next_state.tgt) for next_state in records["next_state"]])
+            # print("max_seq:", max_seq)
+            next_state_src = [next_state.src for next_state in records["next_state"]]
+            next_state_tgt = [next_state.tgt for next_state in records["next_state"]]
+            next_state_mask = [next_state.mask for next_state in records["next_state"]]
+            # next_state_tgt_mask = [next_state.mask for next_state in records["next_state"]]
             (
                 next_state_src,
                 next_state_tgt,
-                next_state_src_padding_mask,
-                next_state_tgt_padding_mask,
-                next_state_tgt_mask,
+                next_state_mask,
             ) = pad_sequences(
-                next_state_src, next_state_tgt_mask, max_len=max_seq
+                next_state_src, next_state_tgt, next_state_mask, self.n_max_nodes, batch_size=self.batch_size
             )  # batch_size x seq_len
             next_state_src = torch.FloatTensor(next_state_src).to(self.device)
             next_state_tgt = torch.FloatTensor(next_state_tgt).to(self.device)
-            next_state_tgt_mask = (
-                torch.BoolTensor(next_state_tgt_mask)
-                .unsqueeze(-2)
+            next_state_src_mask = torch.BoolTensor(
+                next_state_src[:, :, 0]
                 .unsqueeze(0)
-                .expand(self.nhead, -1, max_seq, -1)
-                .permute(1, 0, 2, 3)
-                .reshape(-1, max_seq, max_seq)
-                .to(self.device)
-            )
-            next_state_src_padding_mask = (
-                torch.BoolTensor(next_state_src_padding_mask).to(self.device)
-            )
-            next_state_tgt_padding_mask = (
-                torch.BoolTensor(next_state_tgt_padding_mask).to(self.device)
-            )
-            # ************************************************************************************************#
+                .unsqueeze(-2)
+                .expand(self.nhead, -1, self.n_max_nodes, -1)
+                .tanspose(1, 0, 2, 3)
+                .reshape(-1, self.n_max_nodes, self.n_max_nodes)
+                == -float("inf")
+            ).to(
+                self.device
+            )  # batch_size*nhead x seq_len x seq_len
+            next_state_src_padding_mask = torch.BoolTensor(next_state_src[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
+            next_state_tgt_mask = torch.BoolTensor(
+                next_state_tgt[:, :, 0]
+                .unsqueeze(0)
+                .unsqueeze(-2)
+                .expand(self.nhead, -1, self.n_max_nodes, -1)
+            ).to(
+                self.device
+            )  # batch_size*nhead x seq_len x seq_len
+            next_state_tgt_padding_mask = torch.BoolTensor(next_state_tgt[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
+            next_state_tgt_memory_mask = None
+            next_state_tgt_memory_padding_mask = torch.BoolTensor(next_state_tgt[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
+            # ***************************************** Next State ***************************************** #
             actions = (
                 torch.LongTensor(np.array(records["action"]))
                 .unsqueeze(dim=-1)
@@ -231,9 +244,13 @@ class DQNAgent:
             q_value = self.eval_q_net(
                 src=state_src,
                 tgt=state_tgt,
+                src_mask=state_src_mask,
                 tgt_mask=state_tgt_mask,
+                memory_mask = state_tgt_memory_mask,
+                memory_padding_mask = state_tgt_memory_padding_mask,
                 src_key_padding_mask=state_src_padding_mask,
                 tgt_key_padding_mask=state_tgt_padding_mask,
+                mask = state_mask,
             )  # batch_size x seq_len
             q_value = q_value.squeeze(-1).gather(
                 -1, actions
@@ -244,9 +261,13 @@ class DQNAgent:
                 next_q_value = self.eval_q_net(
                     src=next_state_src,
                     tgt=next_state_tgt,
+                    src_mask=next_state_src_mask,
                     tgt_mask=next_state_tgt_mask,
+                    memory_mask = next_state_tgt_memory_mask,
+                    memory_padding_mask = next_state_tgt_memory_padding_mask,
                     src_key_padding_mask=next_state_src_padding_mask,
                     tgt_key_padding_mask=next_state_tgt_padding_mask,
+                    mask = next_state_mask
                 )  # 获取下一个状态下的q值
                 max_action_id = torch.argmax(
                     next_q_value, dim=-1, keepdim=True
@@ -254,9 +275,13 @@ class DQNAgent:
                 target_q_value = self.target_q_net(
                     src=next_state_src,
                     tgt=next_state_tgt,
+                    src_mask=next_state_src_mask,
                     tgt_mask=next_state_tgt_mask,
+                    memory_mask = next_state_tgt_memory_mask,
+                    memory_padding_mask = next_state_tgt_memory_padding_mask,
                     src_key_padding_mask=next_state_src_padding_mask,
                     tgt_key_padding_mask=next_state_tgt_padding_mask,
+                    mask = next_state_mask
                 )
                 target = r + self.gamma * target_q_value.gather(-1, max_action_id) * (
                     ~isterminated
