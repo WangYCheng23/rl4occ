@@ -181,7 +181,7 @@ class DQNAgent:
                 .expand(self.nhead, -1, self.n_max_nodes, -1)
             )
             state_tgt_padding_mask = state_tgt[:, :, 0] == -float("inf")
-            state_memory_mask = 
+            state_memory_mask = None
             ################################################################
             next_state_src = [
                 next_state[:, :-1] for next_state in records["next_state"]
