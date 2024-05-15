@@ -1,4 +1,4 @@
-#-- coding:UTF-8 --
+# -- coding:UTF-8 --
 import copy
 import datetime
 import math
@@ -119,7 +119,7 @@ class DQNAgent:
             src = torch.FloatTensor(state.src).unsqueeze(0).to(self.device)
             tgt = torch.FloatTensor(state.tgt).unsqueeze(0).to(self.device)
             mask = torch.BoolTensor(state.mask).unsqueeze(0).to(self.device)
-            
+
             # tgt_mask = (
             #     torch.BoolTensor(mask.reshape(1, -1).repeat(len(state[:, -1]), 0))
             #     .unsqueeze(0)
@@ -166,10 +166,23 @@ class DQNAgent:
             )  # batch_size x seq_len
             state_src = torch.FloatTensor(state_src).to(self.device)
             state_tgt = torch.FloatTensor(state_tgt).to(self.device)
-            state_src_mask = state_src[:,:,0].unsqueeze(0).unsqueeze(-2).expand(self.nhead,-1,self.n_max_nodes,-1)==-float('inf')
-            state_src_padding_mask = state_src[:,:,0]==-float('inf')
-            state_tgt_mask = state_tgt[:,:,0].unsqueeze(0).unsqueeze(-2).expand(self.nhead,-1,self.n_max_nodes,-1)
-            
+            state_src_mask = state_src[:, :, 0].unsqueeze(0).unsqueeze(-2).expand(
+                self.nhead, -1, self.n_max_nodes, -1
+            ).tanspose(1, 0, 2, 3).reshape(
+                -1, self.n_max_nodes, self.n_max_nodes
+            ) == -float(
+                "inf"
+            )
+            state_src_padding_mask = state_src[:, :, 0] == -float("inf")
+            state_tgt_mask = (
+                state_tgt[:, :, 0]
+                .unsqueeze(0)
+                .unsqueeze(-2)
+                .expand(self.nhead, -1, self.n_max_nodes, -1)
+            )
+            state_tgt_padding_mask = state_tgt[:, :, 0] == -float("inf")
+            state_memory_mask = 
+            ################################################################
             next_state_src = [
                 next_state[:, :-1] for next_state in records["next_state"]
             ]
