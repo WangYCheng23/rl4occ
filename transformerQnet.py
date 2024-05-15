@@ -58,7 +58,7 @@ class TransformerQnet(Module):
         B, S = tgt.size(0), tgt.size(1)
         src = self.embedding(src)
         tgt = self.embedding(tgt)
-        tgt = tgt + self.pe[:tgt.size(0), :]
+        tgt = tgt + self.pe[:tgt.size(1), :].unsqueeze(0).repeat(tgt.size(0),1, 1)
         output, weight = self.Transformer(src, tgt, src_mask, tgt_mask, memory_mask, src_key_padding_mask, tgt_key_padding_mask, memory_key_padding_mask)
         output = self.fc2(self.fc1(output))
         # output [B, S, E] as q
@@ -71,10 +71,14 @@ class TransformerQnet(Module):
         #     o = self.outputL2(self.outputL1(o))
         #     x.append(o)
         # x = torch.FloatTensor(x).reshape(B,S).to(self.device)
-        if mask.size(-1)!=self.n_max_nodes:
+        if mask.shape[-1]!=self.n_max_nodes:
             mask = F.pad(mask, (0, self.n_max_nodes-mask.size(-1)), 'constant', 1)   # B*N
         if tgt_key_padding_mask==None:
-            output = output[:,-1,:]         
+            output = output[:,-1,:]   
+        else:
+            # TODO: xiugai
+            ids = torch.LongTensor([self.n_max_nodes-next((i for i, x in enumerate(m.flip(dims=[-1])) if not x))-1 for m in tgt_key_padding_mask])
+            output = output[:,ids,:]
         output = output.masked_fill(mask==1, -1e9)
 
 

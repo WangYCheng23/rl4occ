@@ -168,27 +168,34 @@ class DQNAgent:
             state_tgt = torch.FloatTensor(state_tgt).to(self.device)
             state_src_mask = torch.BoolTensor(
                 state_src[:, :, 0]
+                .clone()
+                .detach()
                 .unsqueeze(0)
                 .unsqueeze(-2)
                 .expand(self.nhead, -1, self.n_max_nodes, -1)
-                .tanspose(1, 0, 2, 3)
+                .permute(1, 0, 2, 3)
                 .reshape(-1, self.n_max_nodes, self.n_max_nodes)
-                == -float("inf")
+                == -1e4
             ).to(
                 self.device
             )  # batch_size*nhead x seq_len x seq_len
-            state_src_padding_mask = torch.BoolTensor(state_src[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
+            state_src_padding_mask = torch.BoolTensor(state_src[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
             state_tgt_mask = torch.BoolTensor(
                 state_tgt[:, :, 0]
+                .clone()
+                .detach()
                 .unsqueeze(0)
                 .unsqueeze(-2)
                 .expand(self.nhead, -1, self.n_max_nodes, -1)
+                .permute(1, 0, 2, 3)
+                .reshape(-1, self.n_max_nodes, self.n_max_nodes)
+                == -1e4
             ).to(
                 self.device
             )  # batch_size*nhead x seq_len x seq_len
-            state_tgt_padding_mask = torch.BoolTensor(state_tgt[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
+            state_tgt_padding_mask = torch.BoolTensor(state_tgt[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
             state_tgt_memory_mask = None
-            state_tgt_memory_padding_mask = torch.BoolTensor(state_tgt[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
+            state_tgt_memory_padding_mask = torch.BoolTensor(state_tgt[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
             ################################################################
             max_src_seq = np.max([len(next_state.src) for next_state in records["next_state"]])
             max_tgt_seq = np.max([len(next_state.tgt) for next_state in records["next_state"]])
@@ -208,27 +215,34 @@ class DQNAgent:
             next_state_tgt = torch.FloatTensor(next_state_tgt).to(self.device)
             next_state_src_mask = torch.BoolTensor(
                 next_state_src[:, :, 0]
+                .clone()
+                .detach()
                 .unsqueeze(0)
                 .unsqueeze(-2)
                 .expand(self.nhead, -1, self.n_max_nodes, -1)
-                .tanspose(1, 0, 2, 3)
+                .permute(1, 0, 2, 3)
                 .reshape(-1, self.n_max_nodes, self.n_max_nodes)
-                == -float("inf")
+                == -1e4
             ).to(
                 self.device
             )  # batch_size*nhead x seq_len x seq_len
-            next_state_src_padding_mask = torch.BoolTensor(next_state_src[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
+            next_state_src_padding_mask = torch.BoolTensor(next_state_src[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
             next_state_tgt_mask = torch.BoolTensor(
                 next_state_tgt[:, :, 0]
+                .clone()
+                .detach()
                 .unsqueeze(0)
                 .unsqueeze(-2)
                 .expand(self.nhead, -1, self.n_max_nodes, -1)
+                .permute(1, 0, 2, 3)
+                .reshape(-1, self.n_max_nodes, self.n_max_nodes)
+                == -1e4
             ).to(
                 self.device
             )  # batch_size*nhead x seq_len x seq_len
-            next_state_tgt_padding_mask = torch.BoolTensor(next_state_tgt[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
+            next_state_tgt_padding_mask = torch.BoolTensor(next_state_tgt[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
             next_state_tgt_memory_mask = None
-            next_state_tgt_memory_padding_mask = torch.BoolTensor(next_state_tgt[:, :, 0] == -float("inf")).to(self.device)    # batch_size x seq_len
+            next_state_tgt_memory_padding_mask = torch.BoolTensor(next_state_tgt[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
             # ***************************************** Next State ***************************************** #
             actions = (
                 torch.LongTensor(np.array(records["action"]))
@@ -247,7 +261,7 @@ class DQNAgent:
                 src_mask=state_src_mask,
                 tgt_mask=state_tgt_mask,
                 memory_mask = state_tgt_memory_mask,
-                memory_padding_mask = state_tgt_memory_padding_mask,
+                memory_key_padding_mask = state_tgt_memory_padding_mask,
                 src_key_padding_mask=state_src_padding_mask,
                 tgt_key_padding_mask=state_tgt_padding_mask,
                 mask = state_mask,
@@ -264,7 +278,7 @@ class DQNAgent:
                     src_mask=next_state_src_mask,
                     tgt_mask=next_state_tgt_mask,
                     memory_mask = next_state_tgt_memory_mask,
-                    memory_padding_mask = next_state_tgt_memory_padding_mask,
+                    memory_key_padding_mask = next_state_tgt_memory_padding_mask,
                     src_key_padding_mask=next_state_src_padding_mask,
                     tgt_key_padding_mask=next_state_tgt_padding_mask,
                     mask = next_state_mask
@@ -278,7 +292,7 @@ class DQNAgent:
                     src_mask=next_state_src_mask,
                     tgt_mask=next_state_tgt_mask,
                     memory_mask = next_state_tgt_memory_mask,
-                    memory_padding_mask = next_state_tgt_memory_padding_mask,
+                    memory_key_padding_mask = next_state_tgt_memory_padding_mask,
                     src_key_padding_mask=next_state_src_padding_mask,
                     tgt_key_padding_mask=next_state_tgt_padding_mask,
                     mask = next_state_mask

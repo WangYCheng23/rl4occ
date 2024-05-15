@@ -2,7 +2,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-20 13:36:05
-LastEditTime: 2024-05-15 15:58:00
+LastEditTime: 2024-05-16 00:06:58
 '''
 import copy
 import numpy as np
@@ -12,8 +12,8 @@ from memory_profiler import profile
 
 def pad_sequences(src, tgt, mask, n_max_nodes, batch_size, padding_value=1):
     for i in range(batch_size):
-        src[i] = np.vstack((src[i], np.ones((n_max_nodes-src[i].shape[0], src[i].shape[1]))*1e-9)) # N*E
-        tgt[i] = np.vstack((tgt[i], np.ones((n_max_nodes-tgt[i].shape[0], tgt[i].shape[1]))*1e-9)) # N*E
+        src[i] = np.vstack((src[i], np.ones((n_max_nodes-src[i].shape[0], src[i].shape[1]))*(-1e4))) # N*E
+        tgt[i] = np.vstack((tgt[i], np.ones((n_max_nodes-tgt[i].shape[0], tgt[i].shape[1]))*(-1e4))) # N*E
         
         mask[i] = np.pad(mask[i], (0, n_max_nodes-mask[i].shape[0]), 'constant', constant_values=1)  # N*1
     return np.array(src, dtype=np.float32), np.array(tgt, dtype=np.float32), np.array(mask, dtype=bool)   
