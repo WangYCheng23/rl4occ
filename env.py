@@ -48,7 +48,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         ])
         if len(self.stepedparts)==0:
             tgt_inputs = np.random.random((1, src_inputs.shape[-1])) # 初始tgt随机
-        mask = np.zeros(len(self.allparts), dtype=np.float32)
+        mask = np.zeros((len(self.allparts)), dtype=np.float32)
         mask[self.stepedparts] = 1
           
         return states(src_inputs, tgt_inputs, mask)

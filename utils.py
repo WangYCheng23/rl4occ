@@ -2,29 +2,36 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-20 13:36:05
-LastEditTime: 2024-05-13 10:18:09
+LastEditTime: 2024-05-15 15:58:00
 '''
 import copy
 import numpy as np
 import torch
+import torch.nn.functional as F
 from memory_profiler import profile
 
-def pad_sequences(sequences, atten_mask, max_len, padding_value=1):
+def pad_sequences(src, tgt, mask, n_max_nodes, batch_size, padding_value=1):
+    for i in range(batch_size):
+        src[i] = np.vstack((src[i], np.ones((n_max_nodes-src[i].shape[0], src[i].shape[1]))*1e-9)) # N*E
+        tgt[i] = np.vstack((tgt[i], np.ones((n_max_nodes-tgt[i].shape[0], tgt[i].shape[1]))*1e-9)) # N*E
+        
+        mask[i] = np.pad(mask[i], (0, n_max_nodes-mask[i].shape[0]), 'constant', constant_values=1)  # N*1
+    return np.array(src, dtype=np.float32), np.array(tgt, dtype=np.float32), np.array(mask, dtype=bool)   
     # x = np.ones((len(sequences), max_len, 10), dtype=np.float32)
-    out = []
-    src_key_mask = np.zeros((len(sequences), max_len))
-    for i, seq in enumerate(sequences):
-        if len(seq) < max_len:
-            src_key_mask[i,len(seq):] = 1   # src_key_mask
-            atten_mask[i] = np.pad(np.array(atten_mask[i]), (0, max_len - len(seq)), 'constant', constant_values=1) # atten_mask
-            # key_mask[i] = copy.deepcopy(atten_mask[i])   # key_mask
-            out.append(np.concatenate((seq, np.array([[padding_value for _ in range(10)]]  * (max_len - len(seq))))))
-        else:
-            out.append(seq)
-    out = np.array(out)
-    atten_mask = np.array(atten_mask)
-    tgt_key_mask = copy.deepcopy(atten_mask)    # tgt_key_mask
-    return copy.deepcopy(out), copy.deepcopy(out), src_key_mask, tgt_key_mask, atten_mask
+    # out = []
+    # src_key_mask = np.zeros((len(sequences), max_len))
+    # for i, seq in enumerate(sequences):
+    #     if len(seq) < max_len:
+    #         src_key_mask[i,len(seq):] = 1   # src_key_mask
+    #         atten_mask[i] = np.pad(np.array(atten_mask[i]), (0, max_len - len(seq)), 'constant', constant_values=1) # atten_mask
+    #         # key_mask[i] = copy.deepcopy(atten_mask[i])   # key_mask
+    #         out.append(np.concatenate((seq, np.array([[padding_value for _ in range(10)]]  * (max_len - len(seq))))))
+    #     else:
+    #         out.append(seq)
+    # out = np.array(out)
+    # atten_mask = np.array(atten_mask)
+    # tgt_key_mask = copy.deepcopy(atten_mask)    # tgt_key_mask
+    # return copy.deepcopy(out), copy.deepcopy(out), src_key_mask, tgt_key_mask, atten_mask
 
 # @profile(precision=4, stream=open("memory_profiler.log", "w+"))
 def pad_sequences_and_create_mask(sequences, padding_value=0):

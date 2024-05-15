@@ -34,7 +34,7 @@ def generate_positional_encoding(d_model, max_len=1000):
     return pe
 
 class TransformerQnet(Module):
-    def __init__(self, input_dim: int, d_model: int = 512, nhead: int = 8, num_encoder_layers: int = 6,
+    def __init__(self, n_max_nodes, input_dim: int, d_model: int = 512, nhead: int = 8, num_encoder_layers: int = 6,
                  num_decoder_layers: int = 6, dim_feedforward: int = 2048, dropout: float = 0.1,
                  activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                  custom_encoder: Optional[Any] = None, custom_decoder: Optional[Any] = None,
@@ -42,7 +42,7 @@ class TransformerQnet(Module):
                  device=None, dtype=None) -> None:
         super(TransformerQnet, self).__init__()
         factory_kwargs = {'device': device, 'dtype': dtype}
-        self.n_max_nodes = 30
+        self.n_max_nodes = n_max_nodes
         self.device = factory_kwargs['device']
         self.embedding = nn.Linear(input_dim, d_model, **factory_kwargs)
         self.pe = generate_positional_encoding(d_model).to(self.device)
@@ -72,7 +72,7 @@ class TransformerQnet(Module):
         #     x.append(o)
         # x = torch.FloatTensor(x).reshape(B,S).to(self.device)
         if mask.size(-1)!=self.n_max_nodes:
-            mask = F.pad(mask, (0, self.n_max_nodes-mask.size(-1)), 'constant', 1)
+            mask = F.pad(mask, (0, self.n_max_nodes-mask.size(-1)), 'constant', 1)   # B*N
         if tgt_key_padding_mask==None:
             output = output[:,-1,:]         
         output = output.masked_fill(mask==1, -1e9)

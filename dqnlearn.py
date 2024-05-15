@@ -27,6 +27,7 @@ class DQNAgent:
             "cuda" if torch.cuda.is_available() else "cpu"
         )  # 定义设备类型，如果GPU可用则使用GPU，否则使用CPU
 
+        self.n_max_nodes = 30
         self.input_dim = 10
         self.d_model = 128
         self.nhead = 8
@@ -37,6 +38,7 @@ class DQNAgent:
         self.batch_first = True
 
         self.eval_q_net = TransformerQnet(
+            n_max_nodes = self.n_max_nodes,
             input_dim=self.input_dim,
             d_model=self.d_model,
             nhead=self.nhead,
@@ -48,6 +50,7 @@ class DQNAgent:
             device=self.device
         )
         self.target_q_net = TransformerQnet(
+            n_max_nodes=self.n_max_nodes,
             input_dim=self.input_dim,
             d_model=self.d_model,
             nhead=self.nhead,
@@ -147,38 +150,26 @@ class DQNAgent:
                 .to(self.device)
             )  # batch_size x seq_len
             # ************************************************************************************************#
-            max_seq = np.max([len(state) for state in records["state"]])
-            print("max_seq:", max_seq)
-            state_src = [state[:, :-1] for state in records["state"]]
-            state_tgt = state_src
-            state_tgt_mask = [state[:, -1] for state in records["state"]]
+            max_src_seq = np.max([len(state.src) for state in records["state"]])
+            max_tgt_seq = np.max([len(state.tgt) for state in records["state"]])
+            # print("max_seq:", max_seq)
+            state_src = [state.src for state in records["state"]]
+            state_tgt = [state.tgt for state in records["state"]]
+            state_mask = [state.mask for state in records["state"]]
+            # state_tgt_mask = [state.mask for state in records["state"]]
             (
                 state_src,
                 state_tgt,
-                state_src_padding_mask,
-                state_tgt_padding_mask,
-                state_tgt_mask,
+                state_mask,
             ) = pad_sequences(
-                state_src, state_tgt_mask, max_len=max_seq
+                state_src, state_tgt, state_mask, self.n_max_nodes, batch_size=self.batch_size
             )  # batch_size x seq_len
             state_src = torch.FloatTensor(state_src).to(self.device)
             state_tgt = torch.FloatTensor(state_tgt).to(self.device)
-            state_tgt_mask = (
-                torch.BoolTensor(state_tgt_mask)
-                .unsqueeze(-2)
-                .unsqueeze(0)
-                .expand(self.nhead, -1, max_seq, -1)
-                .permute(1, 0, 2, 3)
-                .reshape(-1, max_seq, max_seq)
-                .to(self.device)
-            )
-            state_src_padding_mask = (
-                torch.BoolTensor(state_src_padding_mask).to(self.device)
-            )
-            state_tgt_padding_mask = (
-                torch.BoolTensor(state_tgt_padding_mask).to(self.device)
-            )
-
+            state_src_mask = state_src[:,:,0].unsqueeze(0).unsqueeze(-2).expand(self.nhead,-1,self.n_max_nodes,-1)==-float('inf')
+            state_src_padding_mask = state_src[:,:,0]==-float('inf')
+            state_tgt_mask = state_tgt[:,:,0].unsqueeze(0).unsqueeze(-2).expand(self.nhead,-1,self.n_max_nodes,-1)
+            
             next_state_src = [
                 next_state[:, :-1] for next_state in records["next_state"]
             ]
