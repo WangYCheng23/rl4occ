@@ -1,4 +1,4 @@
-#-- coding:UTF-8 --
+# -- coding:UTF-8 --
 import copy
 from typing import Optional, Any, Union, Callable
 
@@ -51,7 +51,7 @@ class TransformerQnet(Module):
                                        layer_norm_eps, batch_first, norm_first, **factory_kwargs)
         self.fc1 = nn.Linear(d_model, 256, **factory_kwargs)
         self.fc2 = nn.Linear(256, self.n_max_nodes, **factory_kwargs)    # 30代表最大零件数量
-        
+
     def forward(self, src: Tensor, tgt: Tensor, src_mask: Optional[Tensor] = None, tgt_mask: Optional[Tensor] = None,
                 memory_mask: Optional[Tensor] = None, src_key_padding_mask: Optional[Tensor] = None,
                 tgt_key_padding_mask: Optional[Tensor] = None, memory_key_padding_mask: Optional[Tensor] = None, mask=None):
@@ -77,17 +77,28 @@ class TransformerQnet(Module):
             output = output[:,-1,:]   
         else:
             # TODO: xiugai
-            ids = torch.LongTensor([self.n_max_nodes-next((i for i, x in enumerate(m.flip(dims=[-1])) if not x))-1 for m in tgt_key_padding_mask])
-            output = output[:,ids,:]
+            ids = (
+                torch.LongTensor(
+                    [
+                        self.n_max_nodes
+                        - next((i for i, x in enumerate(m.flip(dims=[-1])) if not x))
+                        - 1
+                        for m in tgt_key_padding_mask
+                    ]
+                )
+                .unsqueeze(-1)
+                .repeat(1, 30)
+                .unsqueeze(1)
+            )
+            output = output.gather(1,ids).squeeze(1)
         output = output.masked_fill(mask==1, -1e9)
-
 
         # tgt_mask = tgt_mask.view(batch_size,self.nhead,tgt_mask.size(-1),tgt_mask.size(-1))
         # tgt_mask = tgt_mask[:,0,0,:].unsqueeze(-1)
-        # output = output.masked_fill(tgt_mask==0, -1e9)  #TODO:初始的时候全部被mask了    
-        # 
+        # output = output.masked_fill(tgt_mask==0, -1e9)  #TODO:初始的时候全部被mask了
+        #
         return output    # [B, S]
-    
+
 class Transformer(Module):
     r"""A transformer model. User is able to modify the attributes as needed. The architecture
     is based on the paper "Attention Is All You Need". Ashish Vaswani, Noam Shazeer,

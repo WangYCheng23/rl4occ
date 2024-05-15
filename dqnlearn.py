@@ -164,6 +164,7 @@ class DQNAgent:
             ) = pad_sequences(
                 state_src, state_tgt, state_mask, self.n_max_nodes, batch_size=self.batch_size
             )  # batch_size x seq_len
+            state_mask = torch.BoolTensor(state_mask).to(self.device)
             state_src = torch.FloatTensor(state_src).to(self.device)
             state_tgt = torch.FloatTensor(state_tgt).to(self.device)
             state_src_mask = torch.BoolTensor(
@@ -211,6 +212,7 @@ class DQNAgent:
             ) = pad_sequences(
                 next_state_src, next_state_tgt, next_state_mask, self.n_max_nodes, batch_size=self.batch_size
             )  # batch_size x seq_len
+            next_state_mask = torch.BoolTensor(next_state_mask).to(self.device)
             next_state_src = torch.FloatTensor(next_state_src).to(self.device)
             next_state_tgt = torch.FloatTensor(next_state_tgt).to(self.device)
             next_state_src_mask = torch.BoolTensor(
