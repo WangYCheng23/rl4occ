@@ -304,13 +304,13 @@ class DQNAgent:
             # print(f"episode{i}-{update_step}:{loss}")
             mean_loss += loss.item() / self.n_steps_update
         self.log.add_scalar("training/loss", loss.item(), i)
-        # if i % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
+        if i % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
 
-        #     self.target_q_net.load_state_dict(
-        #         self.eval_q_net.state_dict()
-        #     )  # 更新目标Q网络的参数
+            self.target_q_net.load_state_dict(
+                self.eval_q_net.state_dict()
+            )  # 更新目标Q网络的参数
 
-        #     self.save_model(i)  # 保存模型的参数
+            self.save_model(i)  # 保存模型的参数
         w = 0.0001
         for target_param, evaluation_param in zip(self.target_q_net.parameters(), self.eval_q_net.parameters()):
             target_param.data.copy_(w * evaluation_param.data + (1 - w) * target_param.data)
