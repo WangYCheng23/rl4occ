@@ -93,7 +93,7 @@ class DQNAgent:
         self.log = SummaryWriter(f"./logs/{self.datetime}")
 
     def update_episilon(self, step):
-        return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 5000)
+        return self.final_episilon + (self.init_episilon - self.final_episilon) * math.exp(-1. * step / 1000)
         # return 0
 
     def save_model(self, itr):  # 保存q估值网络
@@ -291,12 +291,13 @@ class DQNAgent:
                 self.log.add_scalar("training/target", target.detach().mean().cpu(), i)
             # dqn的拟合q值的损失函数 目标值减去q估计值的平方取平均值来确定loss函数
             # loss = torch.mean((target.detach()-q_value)**2)
-            criterion = nn.MSELoss()
+            criterion = nn.MSELoss(reduction="mean")
             loss = criterion(q_value, target.detach())
 
             self.optimizer.zero_grad()
             loss.backward()  # 反向传播，计算梯度
-            torch.nn.utils.clip_grad_norm_(parameters=self.eval_q_net.parameters(), max_norm=10, norm_type=2)
+            # torch.nn.utils.clip_grad_norm_(parameters=self.eval_q_net.parameters(), max_norm=10, norm_type=2)
+            # torch.nn.utils.clip_grad_value_(self.eval_q_net.parameters(), clip_value=0.5)
             self.optimizer.step()  # 优化器根据梯度更新网络参数
 
             # step_ = step_+1  # 更新步数计数器
