@@ -16,6 +16,7 @@ from transformerQnet import TransformerQnet
 from utils import pad_sequences_and_create_mask, pad_sequences
 
 from memory_profiler import profile
+from tqdm import trange
 
 
 class DQNAgent:
@@ -290,7 +291,8 @@ class DQNAgent:
                 self.log.add_scalar("training/target", target.detach().mean().cpu(), i)
             # dqn的拟合q值的损失函数 目标值减去q估计值的平方取平均值来确定loss函数
             # loss = torch.mean((target.detach()-q_value)**2)
-            loss = torch.mean(F.mse_loss(q_value, target.detach()))
+            criterion = nn.SmoothL1Loss()
+            loss = criterion(q_value, target.detach())
 
             self.optimizer.zero_grad()
             loss.backward()  # 反向传播，计算梯度
@@ -318,7 +320,7 @@ class DQNAgent:
         )  # 创建一个空列表 rewards_per_steps，用于存储每轮训练的奖励/步数
 
         # self.step = 0  # 初始化步数计数器 step_ 为0
-        for i in range(episode_nums):  # 循环执行训练指定次数 episode_nums
+        for i in trange(episode_nums):  # 循环执行训练指定次数 episode_nums
             self.episilon = self.update_episilon(i)
             self.episode += 1  # 更新轮数计数器
             # records = {'state': [], 'next_state': [], 'actions': [], 'r': [
@@ -385,33 +387,3 @@ class DQNAgent:
             ):
                 self.update(i)
 
-
-if __name__ == "__main__":
-    train_dir = "/home/wangc/Documents/rl4occ/data/train"
-    step_filenames = [os.path.join(train_dir, path) for path in os.listdir(train_dir)]
-    env = Env(step_filenames)
-    buffer_size = 30000  # 定义了经验回放缓冲区的大小
-    dqn_agent = DQNAgent(env, buffer_size)
-    test = False
-    if test:
-        states = env.reset()
-        print(f"初始状态:{states}")
-        # embed_dim = 16
-        # hidden_dim = 64
-        # num_heads = 4
-        # output_dim = 1  # 输出维度
-        # seq_length = len(states)  # 序列长度
-
-        # policy = AttentionQNet(output_dim, hidden_dim, embed_dim, num_heads)
-        # policy(torch.FloatTensor(states).reshape(1,-1,1))
-
-        action = dqn_agent.choose_action(states)
-        print(f"动作:{action}")
-        next_state, reward, isterminated = env.step(action)
-        print(f"下一个状态:{next_state}\n即时奖励:{reward}\n是否终止:{isterminated}")
-
-    episode_nums = 2000  # 定义了训练的总回合数
-
-    dqn_agent.learn(episode_nums)
-    dqn_agent.load_model()  # 加载训练好的dqn模型
-    dqn_agent.save_optimevalue()  # 保存好得到的dqn初始解

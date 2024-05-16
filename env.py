@@ -78,7 +78,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         return interference_count * 50 + 10 * direction_change_num
 
     def reset(self, seed=23):  # 环境重置，
-        print("---环境重置，随机选择新的装配体---")
+        # print("---环境重置，随机选择新的装配体---")
         # step_filename = random.choice(self.step_filenames)
         # pickle_data = random.choice(self.pickle_dataset)
         # with open(pickle_data, 'rb') as f:
@@ -88,7 +88,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         # self.step_filename = step_filename
         # self.assembly.create_boom()  # 创建装配模型的爆炸视图，用于显示零件的装配顺序。
         self.part_num = self.assembly.part_num # 获取装配模型中的零件数量
-        print("零件数量：", self.part_num)
+        # print("零件数量：", self.part_num)
         # self.assembly.compute_countij()  # 提前计算每个零件排在在某个其他零件后发生碰撞次数，为了加速?
         # self.n_state = self.part_num*2*9
         # self.n_actions = self.part_num  # 将动作空间的大小设置为零件的数量，表示每个动作是选择一个零件进行装配

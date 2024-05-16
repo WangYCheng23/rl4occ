@@ -2,7 +2,7 @@
 '''
 Author: WANG CHENG
 Date: 2024-04-20 01:46:06
-LastEditTime: 2024-05-16 16:30:28
+LastEditTime: 2024-05-16 16:44:53
 
 '''
 import os
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     mypool.join()         # 主进程阻塞等待子进程的退出
 
     env = Env(step_filenames, pickle_dataset)
-    buffer_size = 30000  # 定义了经验回放缓冲区的大小
+    buffer_size = 50000  # 定义了经验回放缓冲区的大小
     dqn_agent = DQNAgent(env, buffer_size)
     test = False
     if test:
