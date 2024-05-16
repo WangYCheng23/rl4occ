@@ -167,7 +167,7 @@ class DQNAgent:
             state_mask = torch.BoolTensor(state_mask).to(self.device)
             state_src = torch.FloatTensor(state_src).to(self.device)
             state_tgt = torch.FloatTensor(state_tgt).to(self.device)
-            state_src_mask = torch.BoolTensor(
+            state_src_mask = (
                 state_src[:, :, 0]
                 .clone()
                 .detach()
@@ -177,11 +177,9 @@ class DQNAgent:
                 .permute(1, 0, 2, 3)
                 .reshape(-1, self.n_max_nodes, self.n_max_nodes)
                 == -1e4
-            ).to(
-                self.device
             )  # batch_size*nhead x seq_len x seq_len
-            state_src_padding_mask = torch.BoolTensor(state_src[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
-            state_tgt_mask = torch.BoolTensor(
+            state_src_padding_mask = (state_src[:, :, 0] == -1e4)    # batch_size x seq_len
+            state_tgt_mask = (
                 state_tgt[:, :, 0]
                 .clone()
                 .detach()
@@ -191,12 +189,10 @@ class DQNAgent:
                 .permute(1, 0, 2, 3)
                 .reshape(-1, self.n_max_nodes, self.n_max_nodes)
                 == -1e4
-            ).to(
-                self.device
-            )  # batch_size*nhead x seq_len x seq_len
-            state_tgt_padding_mask = torch.BoolTensor(state_tgt[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
+            ) # batch_size*nhead x seq_len x seq_len
+            state_tgt_padding_mask = (state_tgt[:, :, 0] == -1e4)    # batch_size x seq_len
             state_tgt_memory_mask = None
-            state_tgt_memory_padding_mask = torch.BoolTensor(state_tgt[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
+            state_tgt_memory_padding_mask = (state_tgt[:, :, 0] == -1e4)   # batch_size x seq_len
             ################################################################
             max_src_seq = np.max([len(next_state.src) for next_state in records["next_state"]])
             max_tgt_seq = np.max([len(next_state.tgt) for next_state in records["next_state"]])
@@ -215,7 +211,7 @@ class DQNAgent:
             next_state_mask = torch.BoolTensor(next_state_mask).to(self.device)
             next_state_src = torch.FloatTensor(next_state_src).to(self.device)
             next_state_tgt = torch.FloatTensor(next_state_tgt).to(self.device)
-            next_state_src_mask = torch.BoolTensor(
+            next_state_src_mask = (
                 next_state_src[:, :, 0]
                 .clone()
                 .detach()
@@ -225,11 +221,9 @@ class DQNAgent:
                 .permute(1, 0, 2, 3)
                 .reshape(-1, self.n_max_nodes, self.n_max_nodes)
                 == -1e4
-            ).to(
-                self.device
-            )  # batch_size*nhead x seq_len x seq_len
-            next_state_src_padding_mask = torch.BoolTensor(next_state_src[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
-            next_state_tgt_mask = torch.BoolTensor(
+            ) # batch_size*nhead x seq_len x seq_len
+            next_state_src_padding_mask = (next_state_src[:, :, 0] == -1e4)    # batch_size x seq_len
+            next_state_tgt_mask = (
                 next_state_tgt[:, :, 0]
                 .clone()
                 .detach()
@@ -239,12 +233,10 @@ class DQNAgent:
                 .permute(1, 0, 2, 3)
                 .reshape(-1, self.n_max_nodes, self.n_max_nodes)
                 == -1e4
-            ).to(
-                self.device
             )  # batch_size*nhead x seq_len x seq_len
-            next_state_tgt_padding_mask = torch.BoolTensor(next_state_tgt[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
+            next_state_tgt_padding_mask = (next_state_tgt[:, :, 0] == -1e4)   # batch_size x seq_len
             next_state_tgt_memory_mask = None
-            next_state_tgt_memory_padding_mask = torch.BoolTensor(next_state_tgt[:, :, 0] == -1e4).to(self.device)    # batch_size x seq_len
+            next_state_tgt_memory_padding_mask = (next_state_tgt[:, :, 0] == -1e4)   # batch_size x seq_len
             # ***************************************** Next State ***************************************** #
             actions = (
                 torch.LongTensor(np.array(records["action"]))
