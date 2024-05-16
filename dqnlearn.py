@@ -68,14 +68,14 @@ class DQNAgent:
         self.replay_buffer = ReplayBuffer(buffer_size)
 
         # 训练超参数
-        self.n_steps_update = 2  # 定义每次训练时使用的步数
+        self.n_steps_update = 1  # 定义每次训练时使用的步数
         self.batch_size = 64  # 定义每次训练时的批量大小
         # 使用Adam优化器来优化估计网络的参数，学习率为2e-4（α）。
-        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=3e-5)
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer, T_max=150, eta_min=0
-        )
-        self.replace_steps_cycle = 100  # 定义替换目标网络参数的周期步数
+        self.optimizer = torch.optim.Adam(self.eval_q_net.parameters(), lr=1e-3)
+        # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        #     self.optimizer, T_max=150, eta_min=0
+        # )
+        self.replace_steps_cycle = 200  # 定义替换目标网络参数的周期步数
 
         self.init_episilon = 0.98
         self.final_episilon = 0.04
@@ -98,7 +98,7 @@ class DQNAgent:
         if not os.path.exists(f"./model/{self.datetime}"):
             os.mkdir(f"./model/{self.datetime}")
         # os.mkdir(f'./model/{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
-        torch.save(self.eval_q_net, f"./model/{self.datetime}/eval_q_net-{itr}.pth")
+        torch.save(self.eval_q_net, f"./model/{self.datetime}/eval_q_net.pth")
 
     def load_model(self):  # 加载深度Q学习算法中的Q值估计网络（q_net）便于继续训练和预测
         self.eval_q_net = torch.load("./model/best_eval_q_net.pth")
@@ -294,7 +294,8 @@ class DQNAgent:
                 target = r + self.gamma * target_q_value.gather(-1, max_action_id) * (
                     ~isterminated
                 )  # 根据即时奖励和下个状态下做出最优动作后的q值得到的目标q值 batch_size x 1
-
+                self.log.add_scalar("training/q_val", q_value, i)
+                self.log.add_scalar("training/target", target, i)
             # dqn的拟合q值的损失函数 目标值减去q估计值的平方取平均值来确定loss函数
             # loss = torch.mean((target.detach()-q_value)**2)
             loss = torch.mean(F.mse_loss(q_value, target.detach()))
@@ -307,11 +308,11 @@ class DQNAgent:
             print(f"episode{i}-{update_step}:{loss}")
             mean_loss += loss.item() / self.n_steps_update
         self.log.add_scalar("training/loss", mean_loss, i)
-        # if step_ % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
+        if i % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
 
-        self.target_q_net.load_state_dict(
-            self.eval_q_net.state_dict()
-        )  # 更新目标Q网络的参数
+            self.target_q_net.load_state_dict(
+                self.eval_q_net.state_dict()
+            )  # 更新目标Q网络的参数
 
         self.save_model(i)  # 保存模型的参数
 
