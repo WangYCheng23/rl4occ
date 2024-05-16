@@ -60,7 +60,7 @@ class TransformerQnet(Module):
         tgt = self.embedding(tgt)
         tgt = tgt + self.pe[:tgt.size(1), :].unsqueeze(0).repeat(tgt.size(0),1, 1)
         output, weight = self.Transformer(src, tgt, src_mask, tgt_mask, memory_mask, src_key_padding_mask, tgt_key_padding_mask, memory_key_padding_mask)
-        output = self.softmax(self.fc(output))
+        output = self.fc(output)
         # output [B, S, E] as q
         # weight [B, S, 1]
         # output = output.permute(1,0,2)
@@ -76,7 +76,6 @@ class TransformerQnet(Module):
         if tgt_key_padding_mask==None:
             output = output[:,-1,:]   
         else:
-            # TODO: xiugai
             ids = (
                 torch.LongTensor(
                     [
@@ -92,7 +91,7 @@ class TransformerQnet(Module):
             ).to(self.device)
             output = output.gather(1,ids).squeeze(1)
         output = output.masked_fill(mask==1, -1e9)
-
+        # output = self.softmax(output)
         # tgt_mask = tgt_mask.view(batch_size,self.nhead,tgt_mask.size(-1),tgt_mask.size(-1))
         # tgt_mask = tgt_mask[:,0,0,:].unsqueeze(-1)
         # output = output.masked_fill(tgt_mask==0, -1e9)  #TODO:初始的时候全部被mask了

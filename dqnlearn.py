@@ -168,32 +168,32 @@ class DQNAgent:
             state_mask = torch.BoolTensor(state_mask).to(self.device)
             state_src = torch.FloatTensor(state_src).to(self.device)
             state_tgt = torch.FloatTensor(state_tgt).to(self.device)
-            state_src_mask = (
-                state_src[:, :, 0]
-                .clone()
-                .detach()
-                .unsqueeze(0)
-                .unsqueeze(-2)
-                .expand(self.nhead, -1, self.n_max_nodes, -1)
-                .permute(1, 0, 2, 3)
-                .reshape(-1, self.n_max_nodes, self.n_max_nodes)
-                == -1e4
-            )  # batch_size*nhead x seq_len x seq_len
-            state_src_padding_mask = (state_src[:, :, 0] == -1e4)    # batch_size x seq_len
-            state_tgt_mask = (
-                state_tgt[:, :, 0]
-                .clone()
-                .detach()
-                .unsqueeze(0)
-                .unsqueeze(-2)
-                .expand(self.nhead, -1, self.n_max_nodes, -1)
-                .permute(1, 0, 2, 3)
-                .reshape(-1, self.n_max_nodes, self.n_max_nodes)
-                == -1e4
-            ) # batch_size*nhead x seq_len x seq_len
-            state_tgt_padding_mask = (state_tgt[:, :, 0] == -1e4)    # batch_size x seq_len
-            state_tgt_memory_mask = None
-            state_tgt_memory_padding_mask = (state_tgt[:, :, 0] == -1e4)   # batch_size x seq_len
+            # state_src_mask = (
+            #     state_src[:, :, 0]
+            #     .clone()
+            #     .detach()
+            #     .unsqueeze(0)
+            #     .unsqueeze(-2)
+            #     .expand(self.nhead, -1, self.n_max_nodes, -1)
+            #     .permute(1, 0, 2, 3)
+            #     .reshape(-1, self.n_max_nodes, self.n_max_nodes)
+            #     == -1e4
+            # )  # batch_size*nhead x seq_len x seq_len
+            state_src_padding_mask = (state_src[:, :, 0].clone().detach() == -1e4)    # batch_size x seq_len
+            # state_tgt_mask = (
+            #     state_tgt[:, :, 0]
+            #     .clone()
+            #     .detach()
+            #     .unsqueeze(0)
+            #     .unsqueeze(-2)
+            #     .expand(self.nhead, -1, self.n_max_nodes, -1)
+            #     .permute(1, 0, 2, 3)
+            #     .reshape(-1, self.n_max_nodes, self.n_max_nodes)
+            #     == -1e4
+            # ) # batch_size*nhead x seq_len x seq_len
+            state_tgt_padding_mask = (state_tgt[:, :, 0].clone().detach() == -1e4)    # batch_size x seq_len
+            # state_tgt_memory_mask = None
+            state_tgt_memory_padding_mask = (state_tgt[:, :, 0].clone().detach() == -1e4)   # batch_size x seq_len
             ################################################################
             max_src_seq = np.max([len(next_state.src) for next_state in records["next_state"]])
             max_tgt_seq = np.max([len(next_state.tgt) for next_state in records["next_state"]])
@@ -212,32 +212,32 @@ class DQNAgent:
             next_state_mask = torch.BoolTensor(next_state_mask).to(self.device)
             next_state_src = torch.FloatTensor(next_state_src).to(self.device)
             next_state_tgt = torch.FloatTensor(next_state_tgt).to(self.device)
-            next_state_src_mask = (
-                next_state_src[:, :, 0]
-                .clone()
-                .detach()
-                .unsqueeze(0)
-                .unsqueeze(-2)
-                .expand(self.nhead, -1, self.n_max_nodes, -1)
-                .permute(1, 0, 2, 3)
-                .reshape(-1, self.n_max_nodes, self.n_max_nodes)
-                == -1e4
-            ) # batch_size*nhead x seq_len x seq_len
-            next_state_src_padding_mask = (next_state_src[:, :, 0] == -1e4)    # batch_size x seq_len
-            next_state_tgt_mask = (
-                next_state_tgt[:, :, 0]
-                .clone()
-                .detach()
-                .unsqueeze(0)
-                .unsqueeze(-2)
-                .expand(self.nhead, -1, self.n_max_nodes, -1)
-                .permute(1, 0, 2, 3)
-                .reshape(-1, self.n_max_nodes, self.n_max_nodes)
-                == -1e4
-            )  # batch_size*nhead x seq_len x seq_len
-            next_state_tgt_padding_mask = (next_state_tgt[:, :, 0] == -1e4)   # batch_size x seq_len
-            next_state_tgt_memory_mask = None
-            next_state_tgt_memory_padding_mask = (next_state_tgt[:, :, 0] == -1e4)   # batch_size x seq_len
+            # next_state_src_mask = (
+            #     next_state_src[:, :, 0]
+            #     .clone()
+            #     .detach()
+            #     .unsqueeze(0)
+            #     .unsqueeze(-2)
+            #     .expand(self.nhead, -1, self.n_max_nodes, -1)
+            #     .permute(1, 0, 2, 3)
+            #     .reshape(-1, self.n_max_nodes, self.n_max_nodes)
+            #     == -1e4
+            # ) # batch_size*nhead x seq_len x seq_len
+            next_state_src_padding_mask = (next_state_src[:, :, 0].clone().detach() == -1e4)    # batch_size x seq_len
+            # next_state_tgt_mask = (
+            #     next_state_tgt[:, :, 0]
+            #     .clone()
+            #     .detach()
+            #     .unsqueeze(0)
+            #     .unsqueeze(-2)
+            #     .expand(self.nhead, -1, self.n_max_nodes, -1)
+            #     .permute(1, 0, 2, 3)
+            #     .reshape(-1, self.n_max_nodes, self.n_max_nodes)
+            #     == -1e4
+            # )  # batch_size*nhead x seq_len x seq_len
+            next_state_tgt_padding_mask = (next_state_tgt[:, :, 0].clone().detach() == -1e4)   # batch_size x seq_len
+            # next_state_tgt_memory_mask = None
+            next_state_tgt_memory_padding_mask = (next_state_tgt[:, :, 0].clone().detach() == -1e4)   # batch_size x seq_len
             # ***************************************** Next State ***************************************** #
             actions = (
                 torch.LongTensor(np.array(records["action"]))
@@ -253,26 +253,20 @@ class DQNAgent:
             q_value = self.eval_q_net(
                 src=state_src,
                 tgt=state_tgt,
-                src_mask=state_src_mask,
-                tgt_mask=state_tgt_mask,
-                memory_mask = state_tgt_memory_mask,
                 memory_key_padding_mask = state_tgt_memory_padding_mask,
                 src_key_padding_mask=state_src_padding_mask,
                 tgt_key_padding_mask=state_tgt_padding_mask,
                 mask = state_mask,
             )  # batch_size x seq_len
-            q_value = q_value.squeeze(-1).gather(
+            q_value = q_value.gather(
                 -1, actions
             )  # 根据当前状态和动作获取的q值
-
+            self.log.add_scalar("training/q_val", q_value.detach().mean().cpu(), i)
             # DDQN
             with torch.no_grad():
                 next_q_value = self.eval_q_net(
                     src=next_state_src,
                     tgt=next_state_tgt,
-                    src_mask=next_state_src_mask,
-                    tgt_mask=next_state_tgt_mask,
-                    memory_mask = next_state_tgt_memory_mask,
                     memory_key_padding_mask = next_state_tgt_memory_padding_mask,
                     src_key_padding_mask=next_state_src_padding_mask,
                     tgt_key_padding_mask=next_state_tgt_padding_mask,
@@ -284,9 +278,6 @@ class DQNAgent:
                 target_q_value = self.target_q_net(
                     src=next_state_src,
                     tgt=next_state_tgt,
-                    src_mask=next_state_src_mask,
-                    tgt_mask=next_state_tgt_mask,
-                    memory_mask = next_state_tgt_memory_mask,
                     memory_key_padding_mask = next_state_tgt_memory_padding_mask,
                     src_key_padding_mask=next_state_src_padding_mask,
                     tgt_key_padding_mask=next_state_tgt_padding_mask,
@@ -295,8 +286,8 @@ class DQNAgent:
                 target = r + self.gamma * target_q_value.gather(-1, max_action_id) * (
                     ~isterminated
                 )  # 根据即时奖励和下个状态下做出最优动作后的q值得到的目标q值 batch_size x 1
-                self.log.add_scalar("training/q_val", q_value, i)
-                self.log.add_scalar("training/target", target, i)
+                
+                self.log.add_scalar("training/target", target.detach().mean().cpu(), i)
             # dqn的拟合q值的损失函数 目标值减去q估计值的平方取平均值来确定loss函数
             # loss = torch.mean((target.detach()-q_value)**2)
             loss = torch.mean(F.mse_loss(q_value, target.detach()))
@@ -309,13 +300,16 @@ class DQNAgent:
             print(f"episode{i}-{update_step}:{loss}")
             mean_loss += loss.item() / self.n_steps_update
         self.log.add_scalar("training/loss", mean_loss, i)
-        if i % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
+        # if i % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
 
-            self.target_q_net.load_state_dict(
-                self.eval_q_net.state_dict()
-            )  # 更新目标Q网络的参数
+        #     self.target_q_net.load_state_dict(
+        #         self.eval_q_net.state_dict()
+        #     )  # 更新目标Q网络的参数
 
-        self.save_model(i)  # 保存模型的参数
+        #     self.save_model(i)  # 保存模型的参数
+        w = 0.0001
+        for target_param, evaluation_param in zip(self.target_q_net.parameters(), self.eval_q_net.parameters()):
+            target_param.data.copy_(w * evaluation_param.data + (1 - w) * target_param.data)
 
     def learn(self, episode_nums):
         accrewards = []  # 创建一个空列表 accrewards，用于存储每轮训练的累积奖励
