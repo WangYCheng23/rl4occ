@@ -124,7 +124,7 @@ class Env(gym.Env):  # 定义一个名为Env的类，表示装配体的环境
         Returns:
             _type_: int
         """
-        print(f"---执行动作, 选取零件{action}---")
+        # print(f"---执行动作, 选取零件{action}---")
         if action>=self.part_num:
             raise ValueError(f"action {action} out of range {self.part_num}")
         if action in self.stepedparts:

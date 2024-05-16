@@ -297,9 +297,9 @@ class DQNAgent:
             self.optimizer.step()  # 优化器根据梯度更新网络参数
 
             # step_ = step_+1  # 更新步数计数器
-            print(f"episode{i}-{update_step}:{loss}")
+            # print(f"episode{i}-{update_step}:{loss}")
             mean_loss += loss.item() / self.n_steps_update
-        self.log.add_scalar("training/loss", mean_loss, i)
+        self.log.add_scalar("training/loss", loss.item(), i)
         # if i % self.replace_steps_cycle == 0:  # 判断是否到了更新目标Q网络的周期 是否走完了c steps
 
         #     self.target_q_net.load_state_dict(
@@ -355,14 +355,14 @@ class DQNAgent:
                     state, action, reward, next_state, isterminated
                 )
 
-            print(
-                "episode:",
-                i,
-                " accreward:",
-                accreward,
-                "reward_per_step:",
-                accreward / (count + 1e-6),
-            )
+            # print(
+            #     "episode:",
+            #     i,
+            #     " accreward:",
+            #     accreward,
+            #     "reward_per_step:",
+            #     accreward / (count + 1e-6),
+            # )
             self.log.add_scalar("training/exploration_rate", self.episilon, i)
             self.log.add_scalar(
                 "training/reward_per_episode", accreward / (count + 1e-6), i
