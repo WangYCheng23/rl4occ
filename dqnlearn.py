@@ -297,7 +297,7 @@ class DQNAgent:
             self.optimizer.zero_grad()
             loss.backward()  # 反向传播，计算梯度
             # torch.nn.utils.clip_grad_norm_(parameters=self.eval_q_net.parameters(), max_norm=10, norm_type=2)
-            # torch.nn.utils.clip_grad_value_(self.eval_q_net.parameters(), clip_value=0.5)
+            torch.nn.utils.clip_grad_value_(self.eval_q_net.parameters(), clip_value=0.5)
             self.optimizer.step()  # 优化器根据梯度更新网络参数
 
             # step_ = step_+1  # 更新步数计数器
@@ -371,6 +371,7 @@ class DQNAgent:
             self.log.add_scalar(
                 "training/reward_per_episode", accreward / (count + 1e-6), i
             )
+            self.log.add_scalar('training/episode_reward', accreward, i)
             self.log.add_scalar(
                 "experience_replay_buffer_size", len(self.replay_buffer), i
             )
