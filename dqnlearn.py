@@ -75,6 +75,7 @@ class DQNAgent:
         # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         #     self.optimizer, T_max=150, eta_min=0
         # )
+        self.update_cycle = 20
         self.replace_steps_cycle = 200  # 定义替换目标网络参数的周期步数
 
         self.init_episilon = 0.98
@@ -385,7 +386,7 @@ class DQNAgent:
             # episilon每一轮都要减少一个小数值，在每一轮训练中逐渐减小 ε（epsilon）值，即探索率。ε是在DQN中用于控制探索和利用之间的平衡的重要参数。通过逐渐减小 ε，模型在训练的早期会更多地进行探索，随着训练的进行，模型会更多地利用已经学到的知识。
 
             # 每20个episode进行一次训练
-            if i % self.replace_steps_cycle == 0 and self.replay_buffer.can_sample(
+            if i % self.update_cycle == 0 and self.replay_buffer.can_sample(
                 self.batch_size
             ):
                 self.update(i)
